@@ -4,11 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lightbulb, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Lightbulb, Mail, Lock, Eye, EyeOff, User, Sparkles } from "lucide-react";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [errors, setErrors] = useState<{email?: string, password?: string}>({});
@@ -40,8 +43,11 @@ const Auth = () => {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      // Simulate successful login
+      // Simulate successful login/signup
       localStorage.setItem("isLoggedIn", "true");
+      if (isSignUp && username) {
+        localStorage.setItem("username", username);
+      }
       navigate("/");
     }
   };
@@ -57,7 +63,11 @@ const Auth = () => {
       <div className="w-full max-w-md mx-auto">
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex justify-center items-center gap-3 mb-6">
-            <Lightbulb className="w-10 h-10 text-blue-400" />
+            <div className="relative flex items-center gap-3">
+              <Lightbulb className="w-10 h-10 text-blue-400" />
+              <Sparkles className="w-5 h-5 text-purple-400 absolute -top-1 -right-1 animate-pulse" />
+              <span className="text-xl font-light text-white">IdeaSpark</span>
+            </div>
           </div>
           
           <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4 leading-tight px-2 py-2">
@@ -67,6 +77,59 @@ const Auth = () => {
 
         <div className="backdrop-blur-sm bg-white/5 border border-white/10 rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {isSignUp && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName" className="text-white">First Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <Input
+                        id="firstName"
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        className="pl-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+                        placeholder="First name"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName" className="text-white">Last Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <Input
+                        id="lastName"
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="pl-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+                        placeholder="Last name"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-white">Username</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Input
+                      id="username"
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="pl-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+                      placeholder="Choose a username"
+                      required
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-white">Email</Label>
               <div className="relative">

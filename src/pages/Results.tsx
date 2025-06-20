@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,12 +13,23 @@ const Results = () => {
   const [feedbackGiven, setFeedbackGiven] = useState<boolean | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
 
+  // Check if user is logged in
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+
   useEffect(() => {
     const tools = localStorage.getItem("selectedTools");
     if (tools) {
       setSelectedTools(JSON.parse(tools));
     }
   }, []);
+
+  const requireAuth = (action: () => void) => {
+    if (!isLoggedIn) {
+      navigate("/auth");
+      return;
+    }
+    action();
+  };
 
   const toggleSection = (sectionId: string) => {
     setOpenSections(prev => ({
@@ -169,19 +179,32 @@ const Results = () => {
   };
 
   const handleSaveReport = () => {
-    // Placeholder for Supabase integration
-    const report = {
-      idea: localStorage.getItem("businessIdea"),
-      tools: selectedTools,
-      results: validationResults,
-      timestamp: new Date().toISOString()
-    };
-    
-    const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-    savedReports.push(report);
-    localStorage.setItem("savedReports", JSON.stringify(savedReports));
-    
-    alert("Report saved successfully!");
+    requireAuth(() => {
+      const report = {
+        idea: localStorage.getItem("businessIdea"),
+        tools: selectedTools,
+        results: validationResults,
+        timestamp: new Date().toISOString()
+      };
+      
+      const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+      savedReports.push(report);
+      localStorage.setItem("savedReports", JSON.stringify(savedReports));
+      
+      alert("Report saved successfully!");
+    });
+  };
+
+  const handleExportReport = () => {
+    requireAuth(() => {
+      alert("Export functionality will be added with Supabase integration");
+    });
+  };
+
+  const handleSavedReports = () => {
+    requireAuth(() => {
+      navigate("/saved-reports");
+    });
   };
 
   return (
@@ -222,20 +245,26 @@ const Results = () => {
                       <div className="flex items-center gap-4">
                         <span className="text-2xl">{result.icon}</span>
                         <div className="text-left">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <span className="text-lg">{result.title}</span>
+                            <span className="md:hidden"></span>
                             {getStatusIcon(result.status)}
                           </div>
-                          <div className={`text-3xl font-bold ${getScoreColor(result.score)}`}>
+                          <div className={`text-3xl font-bold ${getScoreColor(result.score)} md:inline`}>
                             {result.score}/10
                           </div>
                         </div>
                       </div>
-                      {openSections[result.id] ? (
-                        <ChevronUp className="w-6 h-6 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-6 h-6 text-slate-400" />
-                      )}
+                      <div className="flex items-center gap-2">
+                        <div className={`text-2xl font-bold ${getScoreColor(result.score)} hidden md:block`}>
+                          {result.score}/10
+                        </div>
+                        {openSections[result.id] ? (
+                          <ChevronUp className="w-6 h-6 text-slate-400 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-6 h-6 text-slate-400 flex-shrink-0" />
+                        )}
+                      </div>
                     </CardTitle>
                     <p className="text-slate-400 text-left">{result.summary}</p>
                   </CardHeader>
@@ -296,19 +325,19 @@ const Results = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center overflow-x-auto">
           <Button
             onClick={() => navigate("/")}
             variant="outline"
-            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8 flex-shrink-0"
           >
             <RotateCcw className="w-5 h-5 mr-2" />
             Try New Idea
           </Button>
           
           <Button
-            onClick={() => alert("Export functionality will be added with Supabase integration")}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-12 px-8"
+            onClick={handleExportReport}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-12 px-8 flex-shrink-0"
           >
             <Download className="w-5 h-5 mr-2" />
             Export Report
@@ -317,16 +346,16 @@ const Results = () => {
           <Button
             onClick={handleSaveReport}
             variant="outline"
-            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8 flex-shrink-0"
           >
             <Save className="w-5 h-5 mr-2" />
             Save Report
           </Button>
           
           <Button
-            onClick={() => navigate("/saved-reports")}
+            onClick={handleSavedReports}
             variant="outline"
-            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8 flex-shrink-0"
           >
             <FileText className="w-5 h-5 mr-2" />
             Saved Reports

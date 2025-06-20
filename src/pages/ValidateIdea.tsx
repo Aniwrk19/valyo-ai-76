@@ -1,18 +1,26 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Lightbulb, Sparkles, Zap } from "lucide-react";
+
 interface Tool {
   id: string;
   icon: string;
   title: string;
   description: string;
 }
+
 const ValidateIdea = () => {
   const [idea, setIdea] = useState("");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const navigate = useNavigate();
+
+  // Check if user is logged in (placeholder logic)
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const username = localStorage.getItem("username") || "User";
+
   const tools: Tool[] = [{
     id: "business-idea",
     icon: "💡",
@@ -39,9 +47,11 @@ const ValidateIdea = () => {
     title: "Go-to-Market Strategy",
     description: "Strategic recommendations"
   }];
+
   const toggleTool = (toolId: string) => {
     setSelectedTools(prev => prev.includes(toolId) ? prev.filter(id => id !== toolId) : [...prev, toolId]);
   };
+
   const handleValidate = () => {
     if (idea.trim()) {
       // Store the idea and selected tools in localStorage
@@ -50,15 +60,38 @@ const ValidateIdea = () => {
       navigate("/processing");
     }
   };
+
+  const handleSignIn = () => {
+    navigate("/auth");
+  };
+
   return <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-12 animate-fade-in">
           <div className="flex justify-center items-center gap-3 mb-6">
-            <div className="relative">
+            <div className="relative flex items-center gap-3">
               <Lightbulb className="w-12 h-12 text-blue-400" />
               <Sparkles className="w-6 h-6 text-purple-400 absolute -top-2 -right-2 animate-pulse" />
+              <span className="text-2xl font-light text-white">IdeaSpark</span>
             </div>
+          </div>
+          
+          {/* Authentication Status */}
+          <div className="mb-6">
+            {isLoggedIn ? (
+              <div className="text-slate-300">
+                Welcome back, <span className="text-blue-400 font-medium">{username}</span>
+              </div>
+            ) : (
+              <Button
+                onClick={handleSignIn}
+                variant="outline"
+                className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700"
+              >
+                Sign In
+              </Button>
+            )}
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-6 leading-tight px-2 py-2">
@@ -82,8 +115,8 @@ const ValidateIdea = () => {
         {/* Tool Selection */}
         <div className="mb-8">
           <p className="text-xl text-slate-300 text-center mb-6">Choose any AI tool</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tools.map(tool => <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {tools.slice(0, 3).map(tool => <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
                 <div className="text-center">
                   <div className="text-2xl mb-2">{tool.icon}</div>
                   <h3 className="text-white font-semibold mb-1 text-sm">{tool.title}</h3>
@@ -91,6 +124,18 @@ const ValidateIdea = () => {
                 </div>
               </div>)}
           </div>
+          
+          {/* Second row - centered */}
+          <div className="flex justify-center gap-4">
+            {tools.slice(3, 5).map(tool => <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] w-full max-w-xs ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+                <div className="text-center">
+                  <div className="text-2xl mb-2">{tool.icon}</div>
+                  <h3 className="text-white font-semibold mb-1 text-sm">{tool.title}</h3>
+                  <p className="text-slate-400 text-xs">{tool.description}</p>
+                </div>
+              </div>)}
+          </div>
+          
           {selectedTools.length === 0 && <p className="text-center text-sm mt-4 text-slate-400">
               No tools selected - all 5 tools will run by default
             </p>}
@@ -106,4 +151,5 @@ const ValidateIdea = () => {
       </div>
     </div>;
 };
+
 export default ValidateIdea;
