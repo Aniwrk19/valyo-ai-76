@@ -24,7 +24,7 @@ const ValidateIdea = () => {
             </div>
           </div>
           
-          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-6 leading-tight py-0">
+          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-6 leading-tight py-0 mx-[3px]">
             Validate your startup idea instantly using AI
           </h1>
           
