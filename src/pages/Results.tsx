@@ -1,14 +1,25 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, RotateCcw, Download, Share2, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ChevronDown, ChevronUp, RotateCcw, Download, Share2, CheckCircle, AlertTriangle, XCircle, ThumbsUp, ThumbsDown, Save, FileText } from "lucide-react";
 
 const Results = () => {
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [feedbackGiven, setFeedbackGiven] = useState<boolean | null>(null);
+  const [feedbackText, setFeedbackText] = useState("");
+
+  useEffect(() => {
+    const tools = localStorage.getItem("selectedTools");
+    if (tools) {
+      setSelectedTools(JSON.parse(tools));
+    }
+  }, []);
 
   const toggleSection = (sectionId: string) => {
     setOpenSections(prev => ({
@@ -17,7 +28,7 @@ const Results = () => {
     }));
   };
 
-  const validationResults = [
+  const allValidationResults = [
     {
       id: "business-idea",
       icon: "💡",
@@ -131,6 +142,8 @@ const Results = () => {
     }
   ];
 
+  const validationResults = allValidationResults.filter(result => selectedTools.includes(result.id));
+
   const getScoreColor = (score: number) => {
     if (score >= 8) return "text-green-400";
     if (score >= 6) return "text-yellow-400";
@@ -147,6 +160,29 @@ const Results = () => {
   };
 
   const averageScore = validationResults.reduce((sum, result) => sum + result.score, 0) / validationResults.length;
+
+  const handleFeedback = (isPositive: boolean) => {
+    setFeedbackGiven(isPositive);
+    if (isPositive) {
+      setFeedbackText("");
+    }
+  };
+
+  const handleSaveReport = () => {
+    // Placeholder for Supabase integration
+    const report = {
+      idea: localStorage.getItem("businessIdea"),
+      tools: selectedTools,
+      results: validationResults,
+      timestamp: new Date().toISOString()
+    };
+    
+    const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+    savedReports.push(report);
+    localStorage.setItem("savedReports", JSON.stringify(savedReports));
+    
+    alert("Report saved successfully!");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-4">
@@ -219,6 +255,46 @@ const Results = () => {
           ))}
         </div>
 
+        {/* Feedback Section */}
+        <div className="backdrop-blur-sm bg-white/5 border border-white/10 rounded-2xl p-8 mb-8">
+          <h3 className="text-2xl font-bold text-white mb-4 text-center">Was this helpful?</h3>
+          <div className="flex justify-center gap-4 mb-4">
+            <Button
+              onClick={() => handleFeedback(true)}
+              variant={feedbackGiven === true ? "default" : "outline"}
+              className={`h-12 px-6 ${feedbackGiven === true ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-800 border-slate-600 text-white hover:bg-slate-700'}`}
+            >
+              <ThumbsUp className="w-5 h-5 mr-2" />
+              Yes
+            </Button>
+            <Button
+              onClick={() => handleFeedback(false)}
+              variant={feedbackGiven === false ? "default" : "outline"}
+              className={`h-12 px-6 ${feedbackGiven === false ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-800 border-slate-600 text-white hover:bg-slate-700'}`}
+            >
+              <ThumbsDown className="w-5 h-5 mr-2" />
+              No
+            </Button>
+          </div>
+          
+          {feedbackGiven === false && (
+            <div className="space-y-4">
+              <Textarea
+                placeholder="What could be improved?"
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+              />
+              <Button
+                onClick={() => alert("Thank you for your feedback!")}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                Submit Feedback
+              </Button>
+            </div>
+          )}
+        </div>
+
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
@@ -239,12 +315,21 @@ const Results = () => {
           </Button>
           
           <Button
-            onClick={() => alert("Share functionality will be added with Supabase integration")}
+            onClick={handleSaveReport}
             variant="outline"
             className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8"
           >
-            <Share2 className="w-5 h-5 mr-2" />
-            Copy Report Link
+            <Save className="w-5 h-5 mr-2" />
+            Save Report
+          </Button>
+          
+          <Button
+            onClick={() => navigate("/saved-reports")}
+            variant="outline"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8"
+          >
+            <FileText className="w-5 h-5 mr-2" />
+            Saved Reports
           </Button>
         </div>
       </div>

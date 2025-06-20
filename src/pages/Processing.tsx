@@ -1,12 +1,19 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Brain, Zap, Target, Users, TrendingUp } from "lucide-react";
 
 const Processing = () => {
   const navigate = useNavigate();
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
 
   useEffect(() => {
+    // Get selected tools from localStorage
+    const tools = localStorage.getItem("selectedTools");
+    if (tools) {
+      setSelectedTools(JSON.parse(tools));
+    }
+
     const timer = setTimeout(() => {
       navigate("/results");
     }, 3000);
@@ -14,13 +21,15 @@ const Processing = () => {
     return () => clearTimeout(timer);
   }, [navigate]);
 
-  const analysisSteps = [
-    { icon: Brain, label: "Business Idea Analysis", delay: 0 },
-    { icon: Target, label: "Problem-Solution Fit", delay: 500 },
-    { icon: Users, label: "Target Audience Research", delay: 1000 },
-    { icon: TrendingUp, label: "Market Competition", delay: 1500 },
-    { icon: Zap, label: "Go-to-Market Strategy", delay: 2000 }
+  const allSteps = [
+    { id: "business-idea", icon: Brain, label: "Business Idea Analysis", delay: 0 },
+    { id: "problem-solution", icon: Target, label: "Problem-Solution Fit", delay: 500 },
+    { id: "target-audience", icon: Users, label: "Target Audience Research", delay: 1000 },
+    { id: "competitor-analysis", icon: TrendingUp, label: "Market Competition", delay: 1500 },
+    { id: "go-to-market", icon: Zap, label: "Go-to-Market Strategy", delay: 2000 }
   ];
+
+  const activeSteps = allSteps.filter(step => selectedTools.includes(step.id));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4">
@@ -43,15 +52,15 @@ const Processing = () => {
           </h1>
           
           <p className="text-xl text-slate-400 mb-8">
-            Running 5 expert tools to validate your startup. Just a moment.
+            Running {activeSteps.length} selected tools. Just a moment.
           </p>
         </div>
 
         {/* Analysis Steps */}
         <div className="space-y-4">
-          {analysisSteps.map((step, index) => (
+          {activeSteps.map((step, index) => (
             <AnalysisStep
-              key={index}
+              key={step.id}
               icon={step.icon}
               label={step.label}
               delay={step.delay}
