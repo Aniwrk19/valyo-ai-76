@@ -1,11 +1,14 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Lightbulb, Sparkles, Zap } from "lucide-react";
+
 const ValidateIdea = () => {
   const [idea, setIdea] = useState("");
   const navigate = useNavigate();
+
   const handleValidate = () => {
     if (idea.trim()) {
       // Store the idea in localStorage for the results page
@@ -13,7 +16,9 @@ const ValidateIdea = () => {
       navigate("/processing");
     }
   };
-  return <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4">
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-12 animate-fade-in">
@@ -24,7 +29,7 @@ const ValidateIdea = () => {
             </div>
           </div>
           
-          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-6 leading-tight py-0 mx-[3px]">
+          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-6 leading-tight px-2 py-2">
             Validate your startup idea instantly using AI
           </h1>
           
@@ -68,6 +73,8 @@ const ValidateIdea = () => {
             </div>)}
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default ValidateIdea;
