@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Lightbulb, Sparkles, Zap } from "lucide-react";
+import { Lightbulb, Zap, User } from "lucide-react";
 
 interface Tool {
   id: string;
@@ -68,48 +68,53 @@ const ValidateIdea = () => {
   return <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl mx-auto">
         {/* Header Section */}
-        <div className="text-center mb-12 animate-fade-in">
-          <div className="flex justify-center items-center gap-3 mb-6">
-            <div className="relative flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Lightbulb className="w-12 h-12 text-blue-400" />
-                <Sparkles className="w-6 h-6 text-purple-400 animate-pulse" />
-              </div>
-              <span className="text-2xl font-light text-white">IdeaSpark</span>
-            </div>
-          </div>
-          
-          {/* Authentication Status */}
-          <div className="absolute top-8 left-8">
+        <div className="text-center mb-12 animate-fade-in relative">
+          {/* Authentication Status - Top Right */}
+          <div className="absolute top-0 right-0 md:top-8 md:right-8">
             {isLoggedIn ? (
-              <div className="text-slate-300">
-                Welcome back, <span className="text-blue-400 font-medium">{username}</span>
+              <div className="flex items-center gap-2 text-slate-300">
+                <User className="w-8 h-8 p-1.5 bg-slate-800 border border-slate-600 rounded-full text-blue-400" />
+                <span className="text-blue-400 font-medium hidden md:inline">{username}</span>
               </div>
             ) : (
               <Button
                 onClick={handleSignIn}
                 variant="outline"
-                className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700"
+                className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 text-sm px-4 py-2"
               >
                 Sign In
               </Button>
             )}
           </div>
+
+          <div className="flex justify-center items-center gap-3 mb-6 mt-8 md:mt-0">
+            <div className="relative flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-12 h-12 text-blue-400" />
+              </div>
+              <span className="text-2xl font-light text-white">IdeaSpark</span>
+            </div>
+          </div>
           
-          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-6 leading-tight px-2 py-2">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-6 leading-tight px-2 py-2">
             Validate your startup idea instantly using AI
           </h1>
           
-          <p className="text-xl text-slate-400 max-w-xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-slate-400 max-w-xl mx-auto leading-relaxed">
             Enter your idea and pick the tools to validate it
           </p>
         </div>
 
         {/* Input Section */}
-        <div className="backdrop-blur-sm bg-white/5 border border-white/10 rounded-2xl p-8 shadow-2xl mb-8">
+        <div className="backdrop-blur-sm bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl mb-8">
           <div className="space-y-6">
             <div className="relative">
-              <Textarea placeholder="Describe your business idea in detail... What problem does it solve? Who is your target audience? How will you make money?" value={idea} onChange={e => setIdea(e.target.value)} className="min-h-[200px] bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 text-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent rounded-xl" />
+              <Textarea 
+                placeholder="Describe your business idea in detail... What problem does it solve? Who is your target audience? How will you make money?" 
+                value={idea} 
+                onChange={e => setIdea(e.target.value)} 
+                className="min-h-[200px] bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 text-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent rounded-xl" 
+              />
             </div>
           </div>
         </div>
@@ -117,25 +122,31 @@ const ValidateIdea = () => {
         {/* Tool Selection */}
         <div className="mb-8">
           <p className="text-xl text-slate-300 text-center mb-6">Choose any AI tool</p>
+          
+          {/* Mobile-first responsive grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            {tools.slice(0, 3).map(tool => <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+            {tools.slice(0, 3).map(tool => 
+              <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
                 <div className="text-center">
                   <div className="text-2xl mb-2">{tool.icon}</div>
                   <h3 className="text-white font-semibold mb-1 text-sm">{tool.title}</h3>
                   <p className="text-slate-400 text-xs">{tool.description}</p>
                 </div>
-              </div>)}
+              </div>
+            )}
           </div>
           
-          {/* Second row - centered */}
-          <div className="flex justify-center gap-4">
-            {tools.slice(3, 5).map(tool => <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] w-full max-w-xs ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+          {/* Second row - mobile stacked, tablet/desktop centered */}
+          <div className="grid grid-cols-1 md:flex md:justify-center md:gap-4">
+            {tools.slice(3, 5).map(tool => 
+              <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] w-full md:max-w-xs mb-4 md:mb-0 ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
                 <div className="text-center">
                   <div className="text-2xl mb-2">{tool.icon}</div>
                   <h3 className="text-white font-semibold mb-1 text-sm">{tool.title}</h3>
                   <p className="text-slate-400 text-xs">{tool.description}</p>
                 </div>
-              </div>)}
+              </div>
+            )}
           </div>
           
           {selectedTools.length === 0 && <p className="text-center text-sm mt-4 text-slate-400">

@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lightbulb, Mail, Lock, Eye, EyeOff, User, Sparkles } from "lucide-react";
+import { Lightbulb, Mail, Lock, Eye, EyeOff, User } from "lucide-react";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -66,7 +65,6 @@ const Auth = () => {
             <div className="relative flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Lightbulb className="w-10 h-10 text-blue-400" />
-                <Sparkles className="w-5 h-5 text-purple-400 animate-pulse" />
               </div>
               <span className="text-xl font-light text-white">IdeaSpark</span>
             </div>
