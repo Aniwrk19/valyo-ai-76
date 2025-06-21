@@ -65,29 +65,30 @@ const ValidateIdea = () => {
     navigate("/auth");
   };
 
-  return <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4">
+  return <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4 relative">
+      {/* Authentication Status - Top Left */}
+      <div className="absolute top-4 left-4 z-10">
+        {isLoggedIn ? (
+          <div className="flex items-center gap-2 text-slate-300">
+            <User className="w-6 h-6 p-1 bg-slate-800 border border-slate-600 rounded-full text-blue-400" />
+            <span className="text-blue-400 font-medium text-sm hidden sm:inline">{username}</span>
+          </div>
+        ) : (
+          <Button
+            onClick={handleSignIn}
+            variant="outline"
+            size="sm"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 text-xs px-2 py-1 h-7"
+          >
+            Sign In
+          </Button>
+        )}
+      </div>
+
       <div className="w-full max-w-4xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-12 animate-fade-in relative">
-          {/* Authentication Status - Top Right */}
-          <div className="absolute top-0 right-0 md:top-8 md:right-8">
-            {isLoggedIn ? (
-              <div className="flex items-center gap-2 text-slate-300">
-                <User className="w-8 h-8 p-1.5 bg-slate-800 border border-slate-600 rounded-full text-blue-400" />
-                <span className="text-blue-400 font-medium hidden md:inline">{username}</span>
-              </div>
-            ) : (
-              <Button
-                onClick={handleSignIn}
-                variant="outline"
-                className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 text-sm px-4 py-2"
-              >
-                Sign In
-              </Button>
-            )}
-          </div>
-
-          <div className="flex justify-center items-center gap-3 mb-6 mt-8 md:mt-0">
+          <div className="flex justify-center items-center gap-3 mb-6">
             <div className="relative flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Lightbulb className="w-12 h-12 text-blue-400" />
@@ -136,10 +137,10 @@ const ValidateIdea = () => {
             )}
           </div>
           
-          {/* Second row - mobile stacked, tablet/desktop centered */}
-          <div className="grid grid-cols-1 md:flex md:justify-center md:gap-4">
+          {/* Second row - mobile stacked vertically, tablet/desktop centered */}
+          <div className="grid grid-cols-1 sm:flex sm:justify-center sm:gap-4">
             {tools.slice(3, 5).map(tool => 
-              <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] w-full md:max-w-xs mb-4 md:mb-0 ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+              <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] w-full sm:max-w-xs mb-4 sm:mb-0 ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
                 <div className="text-center">
                   <div className="text-2xl mb-2">{tool.icon}</div>
                   <h3 className="text-white font-semibold mb-1 text-sm">{tool.title}</h3>
