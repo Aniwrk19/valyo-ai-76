@@ -38,6 +38,7 @@ const Results = () => {
     }));
   };
 
+  // ... keep existing code (allValidationResults array)
   const allValidationResults = [
     {
       id: "business-idea",
@@ -242,27 +243,28 @@ const Results = () => {
                 <CollapsibleTrigger asChild>
                   <CardHeader className="cursor-pointer hover:bg-slate-800/50 transition-colors duration-200">
                     <CardTitle className="flex items-center justify-between text-white">
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 flex-1">
                         <span className="text-2xl">{result.icon}</span>
-                        <div className="text-left">
-                          <div className="flex items-center gap-3 flex-wrap">
+                        <div className="text-left flex-1">
+                          <div className="flex items-center gap-3 flex-wrap mb-2">
                             <span className="text-lg">{result.title}</span>
-                            <span className="md:hidden"></span>
-                            {getStatusIcon(result.status)}
-                          </div>
-                          <div className={`text-3xl font-bold ${getScoreColor(result.score)} md:inline`}>
-                            {result.score}/10
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(result.status)}
+                              <span className={`text-xl font-bold ${getScoreColor(result.score)} sm:hidden`}>
+                                {result.score}/10
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className={`text-2xl font-bold ${getScoreColor(result.score)} hidden md:block`}>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className={`text-2xl font-bold ${getScoreColor(result.score)} hidden sm:block`}>
                           {result.score}/10
                         </div>
                         {openSections[result.id] ? (
-                          <ChevronUp className="w-6 h-6 text-slate-400 flex-shrink-0" />
+                          <ChevronUp className="w-6 h-6 text-slate-400" />
                         ) : (
-                          <ChevronDown className="w-6 h-6 text-slate-400 flex-shrink-0" />
+                          <ChevronDown className="w-6 h-6 text-slate-400" />
                         )}
                       </div>
                     </CardTitle>
@@ -329,7 +331,7 @@ const Results = () => {
           <Button
             onClick={() => navigate("/")}
             variant="outline"
-            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8 flex-shrink-0"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0"
           >
             <RotateCcw className="w-5 h-5 mr-2" />
             Try New Idea
@@ -337,7 +339,7 @@ const Results = () => {
           
           <Button
             onClick={handleExportReport}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-12 px-8 flex-shrink-0"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-12 px-4 flex-shrink-0"
           >
             <Download className="w-5 h-5 mr-2" />
             Export Report
@@ -346,7 +348,7 @@ const Results = () => {
           <Button
             onClick={handleSaveReport}
             variant="outline"
-            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8 flex-shrink-0"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0"
           >
             <Save className="w-5 h-5 mr-2" />
             Save Report
@@ -355,7 +357,7 @@ const Results = () => {
           <Button
             onClick={handleSavedReports}
             variant="outline"
-            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-8 flex-shrink-0"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0"
           >
             <FileText className="w-5 h-5 mr-2" />
             Saved Reports

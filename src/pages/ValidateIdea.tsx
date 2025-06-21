@@ -71,14 +71,16 @@ const ValidateIdea = () => {
         <div className="text-center mb-12 animate-fade-in">
           <div className="flex justify-center items-center gap-3 mb-6">
             <div className="relative flex items-center gap-3">
-              <Lightbulb className="w-12 h-12 text-blue-400" />
-              <Sparkles className="w-6 h-6 text-purple-400 absolute -top-2 -right-2 animate-pulse" />
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-12 h-12 text-blue-400" />
+                <Sparkles className="w-6 h-6 text-purple-400 animate-pulse" />
+              </div>
               <span className="text-2xl font-light text-white">IdeaSpark</span>
             </div>
           </div>
           
           {/* Authentication Status */}
-          <div className="mb-6">
+          <div className="absolute top-8 left-8">
             {isLoggedIn ? (
               <div className="text-slate-300">
                 Welcome back, <span className="text-blue-400 font-medium">{username}</span>

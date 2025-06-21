@@ -64,8 +64,10 @@ const Auth = () => {
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex justify-center items-center gap-3 mb-6">
             <div className="relative flex items-center gap-3">
-              <Lightbulb className="w-10 h-10 text-blue-400" />
-              <Sparkles className="w-5 h-5 text-purple-400 absolute -top-1 -right-1 animate-pulse" />
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-10 h-10 text-blue-400" />
+                <Sparkles className="w-5 h-5 text-purple-400 animate-pulse" />
+              </div>
               <span className="text-xl font-light text-white">IdeaSpark</span>
             </div>
           </div>
@@ -122,7 +124,7 @@ const Auth = () => {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="pl-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
-                      placeholder="Choose a username"
+                      placeholder="Pick a unique username you'll use to sign in"
                       required
                     />
                   </div>
