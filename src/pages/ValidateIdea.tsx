@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -66,8 +65,8 @@ const ValidateIdea = () => {
   };
 
   return <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4 relative">
-      {/* Authentication Status - Top Left */}
-      <div className="absolute top-4 left-4 z-10">
+      {/* Authentication Status - Top Right */}
+      <div className="absolute top-4 right-4 z-10">
         {isLoggedIn ? (
           <div className="flex items-center gap-2 text-slate-300">
             <User className="w-6 h-6 p-1 bg-slate-800 border border-slate-600 rounded-full text-blue-400" />
