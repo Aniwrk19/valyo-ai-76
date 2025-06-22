@@ -107,13 +107,13 @@ const Results = () => {
 
         if (ideaError) throw ideaError;
 
-        // Then, save the validation report
+        // Then, save the validation report - cast validationResults to Json type
         const { error: reportError } = await supabase
           .from('validation_reports')
           .insert({
             user_id: user!.id,
             business_idea_id: ideaData.id,
-            report_data: validationResults,
+            report_data: validationResults as any,
             average_score: averageScore
           });
 
