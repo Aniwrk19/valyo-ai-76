@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Brain, Zap, Target, Users, TrendingUp } from "lucide-react";
+import { Loader2, Brain, Zap, Target, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -86,8 +86,7 @@ const Processing = () => {
     { id: "business-idea", icon: Brain, label: "Business Idea Analysis", delay: 0 },
     { id: "problem-solution", icon: Target, label: "Problem-Solution Fit", delay: 500 },
     { id: "target-audience", icon: Users, label: "Target Audience Research", delay: 1000 },
-    { id: "competitor-analysis", icon: TrendingUp, label: "Market Competition", delay: 1500 },
-    { id: "go-to-market", icon: Zap, label: "Go-to-Market Strategy", delay: 2000 }
+    { id: "go-to-market", icon: Zap, label: "Go-to-Market Strategy", delay: 1500 }
   ];
 
   const activeSteps = allSteps.filter(step => selectedTools.includes(step.id));

@@ -35,11 +35,6 @@ const ValidateIdea = () => {
     title: "Target Audience",
     description: "Builds customer personas with goals, pain points, and behaviors"
   }, {
-    id: "competitor-analysis",
-    icon: "⚔️",
-    title: "Competitive Landscape",
-    description: "Surfaces key competitors and potential positioning advantages"
-  }, {
     id: "go-to-market",
     icon: "🚀",
     title: "Go-to-Market Strategy",
@@ -73,6 +68,14 @@ const ValidateIdea = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4 relative">
+      {/* Logo - Top Left */}
+      <div className="absolute top-6 left-6 z-10">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="w-8 h-8 text-blue-400" />
+          <span className="text-lg font-light text-white">Valyo AI</span>
+        </div>
+      </div>
+
       {/* Authentication Status - Top Right */}
       <div className="absolute top-4 right-4 z-10">
         {user ? (
@@ -96,16 +99,7 @@ const ValidateIdea = () => {
 
       <div className="w-full max-w-4xl mx-auto">
         {/* Header Section */}
-        <div className="text-center mb-12 animate-fade-in relative">
-          <div className="flex justify-center items-center gap-3 mb-6">
-            <div className="relative flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Lightbulb className="w-12 h-12 text-blue-400" />
-              </div>
-              <span className="text-2xl font-light text-white">Valyo AI</span>
-            </div>
-          </div>
-          
+        <div className="text-center mb-12 animate-fade-in relative pt-16">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-6 leading-tight px-2 py-2">
             Validate your startup idea instantly using AI
           </h1>
@@ -129,26 +123,12 @@ const ValidateIdea = () => {
           </div>
         </div>
 
-        {/* Tool Selection */}
+        {/* Tool Selection - 2x2 Grid */}
         <div className="mb-8">
           <p className="text-xl text-slate-300 text-center mb-6">Choose any AI tool</p>
           
-          {/* First row - 3 tools */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            {tools.slice(0, 3).map(tool => 
-              <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
-                <div className="text-center">
-                  <div className="text-2xl mb-2">{tool.icon}</div>
-                  <h3 className="text-white font-semibold mb-1 text-sm">{tool.title}</h3>
-                  <p className="text-slate-400 text-xs">{tool.description}</p>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Second row - 2 tools, stacked on mobile */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-            {tools.slice(3, 5).map(tool => 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
+            {tools.map(tool => 
               <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
                 <div className="text-center">
                   <div className="text-2xl mb-2">{tool.icon}</div>
@@ -160,7 +140,7 @@ const ValidateIdea = () => {
           </div>
           
           {selectedTools.length === 0 && <p className="text-center text-sm mt-4 text-slate-400">
-              No tools selected - all 5 tools will run by default
+              No tools selected - all 4 tools will run by default
             </p>}
         </div>
 
