@@ -2,24 +2,85 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Brain, Zap, Target, Users, TrendingUp } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Processing = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
     // Get selected tools from localStorage
     const tools = localStorage.getItem("selectedTools");
-    if (tools) {
+    const businessIdea = localStorage.getItem("businessIdea");
+    
+    if (tools && businessIdea) {
       setSelectedTools(JSON.parse(tools));
+      
+      // Start validation process
+      validateIdea(businessIdea, JSON.parse(tools));
+    } else {
+      navigate("/");
     }
-
-    const timer = setTimeout(() => {
-      navigate("/results");
-    }, 3000);
-
-    return () => clearTimeout(timer);
   }, [navigate]);
+
+  const validateIdea = async (businessIdea: string, tools: string[]) => {
+    try {
+      // Simulate step progression
+      const stepInterval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev < tools.length - 1) {
+            return prev + 1;
+          } else {
+            clearInterval(stepInterval);
+            return prev;
+          }
+        });
+      }, 800);
+
+      console.log('Calling OpenAI validation...');
+      
+      const { data, error } = await supabase.functions.invoke('validate-idea', {
+        body: {
+          businessIdea,
+          selectedTools: tools
+        }
+      });
+
+      clearInterval(stepInterval);
+
+      if (error) {
+        console.error('Validation error:', error);
+        throw error;
+      }
+
+      console.log('Validation results:', data);
+
+      // Store results in localStorage for the Results page
+      localStorage.setItem("validationResults", JSON.stringify(data.results));
+      localStorage.setItem("averageScore", data.averageScore.toString());
+
+      // Navigate to results after a brief delay
+      setTimeout(() => {
+        navigate("/results");
+      }, 1000);
+
+    } catch (error: any) {
+      console.error('Error during validation:', error);
+      toast({
+        title: "Validation Error",
+        description: error.message || "Failed to validate your idea. Please try again.",
+        variant: "destructive"
+      });
+      
+      // Navigate back to home on error
+      setTimeout(() => {
+        navigate("/");
+      }, 2000);
+    }
+  };
 
   const allSteps = [
     { id: "business-idea", icon: Brain, label: "Business Idea Analysis", delay: 0 },
@@ -52,7 +113,7 @@ const Processing = () => {
           </h1>
           
           <p className="text-xl text-slate-400 mb-8">
-            Running {activeSteps.length} selected tools. Just a moment.
+            Running {activeSteps.length} AI-powered validation tools
           </p>
         </div>
 
@@ -64,6 +125,8 @@ const Processing = () => {
               icon={step.icon}
               label={step.label}
               delay={step.delay}
+              isActive={index <= currentStep}
+              isCompleted={index < currentStep}
             />
           ))}
         </div>
@@ -72,20 +135,54 @@ const Processing = () => {
   );
 };
 
-const AnalysisStep = ({ icon: Icon, label, delay }: { icon: any, label: string, delay: number }) => {
+const AnalysisStep = ({ 
+  icon: Icon, 
+  label, 
+  delay, 
+  isActive, 
+  isCompleted 
+}: { 
+  icon: any, 
+  label: string, 
+  delay: number,
+  isActive: boolean,
+  isCompleted: boolean
+}) => {
   return (
     <div 
-      className="flex items-center justify-center gap-4 p-4 backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl animate-fade-in opacity-0"
+      className={`flex items-center justify-center gap-4 p-4 backdrop-blur-sm border rounded-xl transition-all duration-500 ${
+        isCompleted 
+          ? 'bg-green-900/20 border-green-400/30' 
+          : isActive 
+            ? 'bg-blue-900/20 border-blue-400/30' 
+            : 'bg-white/5 border-white/10'
+      } animate-fade-in opacity-0`}
       style={{ 
         animationDelay: `${delay}ms`,
         animationFillMode: 'forwards'
       }}
     >
-      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600">
+      <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+        isCompleted 
+          ? 'bg-gradient-to-r from-green-600 to-emerald-600' 
+          : isActive 
+            ? 'bg-gradient-to-r from-blue-600 to-purple-600' 
+            : 'bg-slate-700'
+      }`}>
         <Icon className="w-5 h-5 text-white" />
       </div>
-      <span className="text-white font-medium">{label}</span>
-      <Loader2 className="w-5 h-5 text-blue-400 animate-spin ml-auto" />
+      <span className="text-white font-medium flex-1 text-left">{label}</span>
+      {isCompleted ? (
+        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      ) : isActive ? (
+        <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+      ) : (
+        <div className="w-5 h-5 rounded-full bg-slate-600" />
+      )}
     </div>
   );
 };

@@ -5,27 +5,45 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronDown, ChevronUp, RotateCcw, Download, Share2, CheckCircle, AlertTriangle, XCircle, ThumbsUp, ThumbsDown, Save, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp, RotateCcw, Download, CheckCircle, AlertTriangle, XCircle, ThumbsUp, ThumbsDown, Save, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+interface ValidationResult {
+  id: string;
+  icon: string;
+  title: string;
+  score: number;
+  status: string;
+  summary: string;
+  details: string;
+}
 
 const Results = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
+  const [averageScore, setAverageScore] = useState<number>(0);
   const [feedbackGiven, setFeedbackGiven] = useState<boolean | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const tools = localStorage.getItem("selectedTools");
-    if (tools) {
-      setSelectedTools(JSON.parse(tools));
+    // Load results from localStorage
+    const results = localStorage.getItem("validationResults");
+    const avgScore = localStorage.getItem("averageScore");
+    
+    if (results && avgScore) {
+      setValidationResults(JSON.parse(results));
+      setAverageScore(parseFloat(avgScore));
+    } else {
+      // If no results, redirect to home
+      navigate("/");
     }
-  }, []);
+  }, [navigate]);
 
   const requireAuth = (action: () => void) => {
     if (!user) {
@@ -42,122 +60,6 @@ const Results = () => {
     }));
   };
 
-  const allValidationResults = [
-    {
-      id: "business-idea",
-      icon: "💡",
-      title: "Business Idea Validator",
-      score: 8.5,
-      status: "strong",
-      summary: "Your idea shows strong potential with clear value proposition",
-      details: `Your business idea demonstrates several key strengths:
-
-• **Clear Problem Identification**: The problem you're addressing is well-defined and affects a significant market segment
-• **Innovative Solution**: Your approach offers a unique angle that differentiates from existing solutions  
-• **Scalability Potential**: The business model shows strong potential for growth and expansion
-• **Market Timing**: Current market conditions appear favorable for this type of solution
-
-**Recommendations for Improvement:**
-- Consider expanding your value proposition to address secondary pain points
-- Develop a clearer monetization strategy with multiple revenue streams
-- Focus on building a strong brand identity early in development`
-    },
-    {
-      id: "problem-solution",
-      icon: "❓",
-      title: "Problem-Solution Fit",
-      score: 7.2,
-      status: "moderate",
-      summary: "Good alignment between problem and solution with room for refinement",
-      details: `Analysis of your problem-solution alignment:
-
-• **Problem Validation**: The problem you're solving is real and affects your target market
-• **Solution Relevance**: Your proposed solution directly addresses the core pain points
-• **User Experience**: The solution pathway is intuitive and user-friendly
-• **Pain Point Severity**: The problem creates enough friction to drive user adoption
-
-**Areas for Enhancement:**
-- Conduct more user interviews to validate problem severity
-- Consider edge cases and secondary problems your solution could address
-- Develop a more comprehensive understanding of user workflows
-- Test assumptions about user behavior and preferences`
-    },
-    {
-      id: "target-audience",
-      icon: "👥",
-      title: "Target Audience Analysis",
-      score: 6.8,
-      status: "moderate",
-      summary: "Target audience is identified but needs more specific segmentation",
-      details: `Your target audience analysis reveals:
-
-• **Market Size**: Addressable market appears substantial with growth potential
-• **Demographics**: Basic demographic profiling is present but could be more detailed
-• **Psychographics**: Understanding of user motivations and behaviors needs development
-• **Accessibility**: Your target audience is reachable through known channels
-
-**Recommendations:**
-- Create detailed user personas with specific pain points and goals
-- Segment your audience into primary, secondary, and tertiary groups
-- Research communication preferences and media consumption habits
-- Identify early adopters who would be most eager to try your solution
-- Map the customer journey from awareness to purchase decision`
-    },
-    {
-      id: "competitor-analysis",
-      icon: "⚔️",
-      title: "Competitive Landscape",
-      score: 9.1,
-      status: "strong",
-      summary: "Competitive positioning is strong with clear differentiation",
-      details: `Competitive analysis highlights:
-
-• **Market Position**: Your solution occupies a unique position in the competitive landscape
-• **Differentiation**: Clear competitive advantages that are difficult to replicate
-• **Barrier to Entry**: Your approach creates meaningful barriers for competitors
-• **Market Gaps**: You're addressing underserved segments effectively
-
-**Competitive Advantages:**
-- First-mover advantage in a specific niche
-- Superior user experience compared to existing solutions
-- More cost-effective approach than current alternatives
-- Better integration capabilities with existing tools
-
-**Competitive Risks:**
-- Monitor larger players who might enter your market
-- Stay ahead of feature development to maintain your edge`
-    },
-    {
-      id: "go-to-market",
-      icon: "🚀",
-      title: "Go-to-Market Strategy",
-      score: 5.9,
-      status: "needs-work",
-      summary: "Go-to-market approach requires more strategic development",
-      details: `Your go-to-market strategy assessment:
-
-• **Channel Strategy**: Initial channel selection is reasonable but limited
-• **Pricing Model**: Pricing strategy needs more research and validation
-• **Marketing Approach**: Marketing tactics are basic and need more sophistication
-• **Sales Process**: Sales funnel requires more detailed planning
-
-**Critical Improvements Needed:**
-- Develop a multi-channel distribution strategy
-- Create a comprehensive content marketing plan
-- Establish partnership opportunities for faster market penetration
-- Design a customer acquisition cost (CAC) optimization strategy
-- Plan for customer retention and upselling opportunities
-
-**Recommended Next Steps:**
-1. Conduct competitor pricing analysis
-2. Test different marketing messages with target audience
-3. Build relationships with potential strategic partners
-4. Create a detailed launch timeline with measurable milestones`
-    }
-  ];
-
-  const validationResults = allValidationResults.filter(result => selectedTools.includes(result.id));
-
   const getScoreColor = (score: number) => {
     if (score >= 8) return "text-green-400";
     if (score >= 6) return "text-yellow-400";
@@ -173,8 +75,6 @@ const Results = () => {
     }
   };
 
-  const averageScore = validationResults.reduce((sum, result) => sum + result.score, 0) / validationResults.length;
-
   const handleFeedback = (isPositive: boolean) => {
     setFeedbackGiven(isPositive);
     if (isPositive) {
@@ -187,15 +87,20 @@ const Results = () => {
       setSaving(true);
       try {
         const businessIdea = localStorage.getItem("businessIdea");
+        const selectedTools = localStorage.getItem("selectedTools");
         
+        if (!businessIdea || !selectedTools) {
+          throw new Error("Missing business idea or selected tools");
+        }
+
         // First, save the business idea
         const { data: ideaData, error: ideaError } = await supabase
           .from('business_ideas')
           .insert({
             user_id: user!.id,
-            description: businessIdea || '',
-            selected_tools: selectedTools,
-            title: businessIdea?.substring(0, 100) + (businessIdea && businessIdea.length > 100 ? '...' : '')
+            description: businessIdea,
+            selected_tools: JSON.parse(selectedTools),
+            title: businessIdea.substring(0, 100) + (businessIdea.length > 100 ? '...' : '')
           })
           .select()
           .single();
@@ -245,6 +150,14 @@ const Results = () => {
     });
   };
 
+  if (validationResults.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center">
+        <div className="text-white">Loading results...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-4">
       <div className="w-full max-w-4xl mx-auto py-8">
@@ -270,7 +183,7 @@ const Results = () => {
 
         {/* Validation Results */}
         <div className="space-y-6 mb-12">
-          {validationResults.map((result, index) => (
+          {validationResults.map((result) => (
             <Collapsible
               key={result.id}
               open={openSections[result.id]}
