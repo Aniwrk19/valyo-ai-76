@@ -4,22 +4,70 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Eye, Edit, Trash2, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface SavedReport {
-  idea: string;
-  tools: string[];
-  results: any[];
-  timestamp: string;
+  id: string;
+  business_idea: {
+    id: string;
+    title: string;
+    description: string;
+    selected_tools: string[];
+  };
+  report_data: any[];
+  average_score: number;
+  created_at: string;
 }
 
 const SavedReports = () => {
   const [reports, setReports] = useState<SavedReport[]>([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-    setReports(savedReports);
-  }, []);
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    
+    fetchReports();
+  }, [user, navigate]);
+
+  const fetchReports = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('validation_reports')
+        .select(`
+          id,
+          report_data,
+          average_score,
+          created_at,
+          business_idea:business_ideas (
+            id,
+            title,
+            description,
+            selected_tools
+          )
+        `)
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setReports(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error loading reports",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatDate = (timestamp: string) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -31,22 +79,47 @@ const SavedReports = () => {
     });
   };
 
-  const handleViewReport = (index: number) => {
-    const report = reports[index];
-    localStorage.setItem("businessIdea", report.idea);
-    localStorage.setItem("selectedTools", JSON.stringify(report.tools));
+  const handleViewReport = (report: SavedReport) => {
+    // Store the report data in localStorage for the Results page
+    localStorage.setItem("businessIdea", report.business_idea.description);
+    localStorage.setItem("selectedTools", JSON.stringify(report.business_idea.selected_tools));
     navigate("/results");
   };
 
-  const handleDeleteReport = (index: number) => {
-    const updatedReports = reports.filter((_, i) => i !== index);
-    setReports(updatedReports);
-    localStorage.setItem("savedReports", JSON.stringify(updatedReports));
+  const handleDeleteReport = async (reportId: string) => {
+    try {
+      const { error } = await supabase
+        .from('validation_reports')
+        .delete()
+        .eq('id', reportId);
+
+      if (error) throw error;
+
+      setReports(prev => prev.filter(report => report.id !== reportId));
+      toast({
+        title: "Report deleted",
+        description: "The report has been successfully deleted.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error deleting report",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const truncateIdea = (idea: string, maxLength: number = 100) => {
     return idea.length > maxLength ? idea.substring(0, maxLength) + "..." : idea;
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-4">
@@ -77,17 +150,20 @@ const SavedReports = () => {
         ) : (
           <div className="space-y-6">
             {reports.map((report, index) => (
-              <Card key={index} className="bg-slate-900/50 border-slate-700 hover:bg-slate-900/70 transition-colors duration-300">
+              <Card key={report.id} className="bg-slate-900/50 border-slate-700 hover:bg-slate-900/70 transition-colors duration-300">
                 <CardHeader>
                   <CardTitle className="flex items-start justify-between text-white">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="w-5 h-5 text-blue-400" />
                         <span className="text-lg font-semibold">Validation Report #{reports.length - index}</span>
+                        <span className="px-2 py-1 bg-blue-600/20 border border-blue-400/30 rounded text-xs text-slate-400">
+                          Score: {report.average_score?.toFixed(1) || 'N/A'}
+                        </span>
                       </div>
-                      <p className="text-slate-400 text-sm mb-2">{formatDate(report.timestamp)}</p>
+                      <p className="text-slate-400 text-sm mb-2">{formatDate(report.created_at)}</p>
                       <p className="text-slate-300 text-sm leading-relaxed">
-                        {truncateIdea(report.idea)}
+                        {truncateIdea(report.business_idea.description)}
                       </p>
                     </div>
                   </CardTitle>
@@ -96,7 +172,7 @@ const SavedReports = () => {
                 <CardContent className="pt-0">
                   <div className="flex flex-wrap gap-2 mb-4">
                     <span className="text-slate-400 text-sm">Tools used:</span>
-                    {report.tools.map((tool, toolIndex) => (
+                    {report.business_idea.selected_tools.map((tool, toolIndex) => (
                       <span key={toolIndex} className="px-2 py-1 bg-blue-600/20 border border-blue-400/30 rounded text-xs text-slate-400">
                         {tool.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       </span>
@@ -104,17 +180,17 @@ const SavedReports = () => {
                   </div>
                   
                   <div className="flex gap-3">
-                    <Button onClick={() => handleViewReport(index)} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                    <Button onClick={() => handleViewReport(report)} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                       <Eye className="w-4 h-4 mr-2" />
                       View Report
                     </Button>
                     
-                    <Button onClick={() => alert("Edit functionality will be added with HelloSign integration")} variant="outline" className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700">
+                    <Button onClick={() => toast({ title: "Edit functionality coming soon" })} variant="outline" className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700">
                       <Edit className="w-4 h-4 mr-2" />
                       Edit
                     </Button>
                     
-                    <Button onClick={() => handleDeleteReport(index)} variant="outline" className="bg-red-900/20 border-red-600/30 text-red-400 hover:bg-red-900/40">
+                    <Button onClick={() => handleDeleteReport(report.id)} variant="outline" className="bg-red-900/20 border-red-600/30 text-red-400 hover:bg-red-900/40">
                       <Trash2 className="w-4 h-4 mr-2" />
                       Delete
                     </Button>

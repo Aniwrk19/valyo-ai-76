@@ -1,8 +1,10 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Lightbulb, Zap, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Tool {
   id: string;
@@ -15,36 +17,33 @@ const ValidateIdea = () => {
   const [idea, setIdea] = useState("");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const navigate = useNavigate();
-
-  // Check if user is logged in (placeholder logic)
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-  const username = localStorage.getItem("username") || "User";
+  const { user, loading } = useAuth();
 
   const tools: Tool[] = [{
     id: "business-idea",
     icon: "💡",
     title: "Business Idea Validator",
-    description: "AI-powered analysis"
+    description: "Evaluates originality, demand, feasibility, and scalability"
   }, {
     id: "problem-solution",
     icon: "❓",
     title: "Problem-Solution Fit",
-    description: "Market validation insights"
+    description: "Checks if the idea addresses a real, validated pain point"
   }, {
     id: "target-audience",
     icon: "👥",
     title: "Target Audience",
-    description: "Customer segmentation"
+    description: "Builds customer personas with goals, pain points, and behaviors"
   }, {
     id: "competitor-analysis",
     icon: "⚔️",
     title: "Competitive Landscape",
-    description: "Competition analysis"
+    description: "Surfaces key competitors and potential positioning advantages"
   }, {
     id: "go-to-market",
     icon: "🚀",
     title: "Go-to-Market Strategy",
-    description: "Strategic recommendations"
+    description: "Suggests channels, launch plans, pricing strategies, and KPIs"
   }];
 
   const toggleTool = (toolId: string) => {
@@ -64,13 +63,24 @@ const ValidateIdea = () => {
     navigate("/auth");
   };
 
-  return <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4 relative">
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4 relative">
       {/* Authentication Status - Top Right */}
       <div className="absolute top-4 right-4 z-10">
-        {isLoggedIn ? (
+        {user ? (
           <div className="flex items-center gap-2 text-slate-300">
             <User className="w-6 h-6 p-1 bg-slate-800 border border-slate-600 rounded-full text-blue-400" />
-            <span className="text-blue-400 font-medium text-sm hidden sm:inline">{username}</span>
+            <span className="text-blue-400 font-medium text-sm hidden sm:inline">
+              {user.user_metadata?.username || user.email}
+            </span>
           </div>
         ) : (
           <Button
@@ -92,7 +102,7 @@ const ValidateIdea = () => {
               <div className="flex items-center gap-2">
                 <Lightbulb className="w-12 h-12 text-blue-400" />
               </div>
-              <span className="text-2xl font-light text-white">IdeaSpark</span>
+              <span className="text-2xl font-light text-white">Valyo AI</span>
             </div>
           </div>
           
@@ -123,7 +133,7 @@ const ValidateIdea = () => {
         <div className="mb-8">
           <p className="text-xl text-slate-300 text-center mb-6">Choose any AI tool</p>
           
-          {/* Mobile-first responsive grid */}
+          {/* First row - 3 tools */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             {tools.slice(0, 3).map(tool => 
               <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
@@ -136,10 +146,10 @@ const ValidateIdea = () => {
             )}
           </div>
           
-          {/* Second row - mobile stacked vertically, tablet/desktop centered */}
-          <div className="grid grid-cols-1 sm:flex sm:justify-center sm:gap-4">
+          {/* Second row - 2 tools, stacked on mobile */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
             {tools.slice(3, 5).map(tool => 
-              <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] w-full sm:max-w-xs mb-4 sm:mb-0 ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+              <div key={tool.id} onClick={() => toggleTool(tool.id)} className={`backdrop-blur-sm border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${selectedTools.includes(tool.id) ? 'bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
                 <div className="text-center">
                   <div className="text-2xl mb-2">{tool.icon}</div>
                   <h3 className="text-white font-semibold mb-1 text-sm">{tool.title}</h3>
@@ -162,7 +172,8 @@ const ValidateIdea = () => {
           </Button>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
 
 export default ValidateIdea;

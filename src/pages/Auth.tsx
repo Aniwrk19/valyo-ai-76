@@ -1,9 +1,12 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lightbulb, Mail, Lock, Eye, EyeOff, User } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -13,8 +16,9 @@ const Auth = () => {
   const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [errors, setErrors] = useState<{email?: string, password?: string}>({});
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,34 +31,93 @@ const Auth = () => {
     return password.length >= 8 && hasNumber && hasSpecialChar;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newErrors: {email?: string, password?: string} = {};
-
+    
     if (!validateEmail(email)) {
-      newErrors.email = "Please enter a valid email address";
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address",
+        variant: "destructive"
+      });
+      return;
     }
 
     if (!validatePassword(password)) {
-      newErrors.password = "Password must be at least 8 characters with one number and one special character";
+      toast({
+        title: "Invalid password",
+        description: "Password must be at least 8 characters with one number and one special character",
+        variant: "destructive"
+      });
+      return;
     }
 
-    setErrors(newErrors);
+    setLoading(true);
 
-    if (Object.keys(newErrors).length === 0) {
-      // Simulate successful login/signup
-      localStorage.setItem("isLoggedIn", "true");
-      if (isSignUp && username) {
-        localStorage.setItem("username", username);
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              username: username
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Account created!",
+          description: "Please check your email to verify your account.",
+        });
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
+        });
+
+        navigate("/");
       }
-      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Authentication error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    // Placeholder for Google OAuth
-    localStorage.setItem("isLoggedIn", "true");
-    navigate("/");
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: "Google sign in error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -66,7 +129,7 @@ const Auth = () => {
               <div className="flex items-center gap-2">
                 <Lightbulb className="w-10 h-10 text-blue-400" />
               </div>
-              <span className="text-xl font-light text-white">IdeaSpark</span>
+              <span className="text-xl font-light text-white">Valyo AI</span>
             </div>
           </div>
           
@@ -122,7 +185,7 @@ const Auth = () => {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="pl-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
-                      placeholder="Pick a unique username you'll use to sign in"
+                      placeholder="Enter Username"
                       required
                     />
                   </div>
@@ -141,9 +204,9 @@ const Auth = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
                   placeholder="Enter your email"
+                  required
                 />
               </div>
-              {errors.email && <p className="text-red-400 text-sm">{errors.email}</p>}
             </div>
 
             <div className="space-y-2">
@@ -157,6 +220,7 @@ const Auth = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
                   placeholder="Enter your password"
+                  required
                 />
                 <button
                   type="button"
@@ -166,14 +230,14 @@ const Auth = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              {errors.password && <p className="text-red-400 text-sm">{errors.password}</p>}
             </div>
 
             <Button
               type="submit"
-              className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-xl transition-all duration-300 hover:scale-[1.02]"
+              disabled={loading}
+              className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50"
             >
-              {isSignUp ? "Sign Up" : "Log In"}
+              {loading ? "Loading..." : (isSignUp ? "Sign Up" : "Log In")}
             </Button>
 
             <div className="relative my-6">

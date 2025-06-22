@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,16 +6,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronDown, ChevronUp, RotateCcw, Download, Share2, CheckCircle, AlertTriangle, XCircle, ThumbsUp, ThumbsDown, Save, FileText } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Results = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [feedbackGiven, setFeedbackGiven] = useState<boolean | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
-
-  // Check if user is logged in
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const tools = localStorage.getItem("selectedTools");
@@ -24,7 +28,7 @@ const Results = () => {
   }, []);
 
   const requireAuth = (action: () => void) => {
-    if (!isLoggedIn) {
+    if (!user) {
       navigate("/auth");
       return;
     }
@@ -38,7 +42,6 @@ const Results = () => {
     }));
   };
 
-  // ... keep existing code (allValidationResults array)
   const allValidationResults = [
     {
       id: "business-idea",
@@ -179,26 +182,60 @@ const Results = () => {
     }
   };
 
-  const handleSaveReport = () => {
-    requireAuth(() => {
-      const report = {
-        idea: localStorage.getItem("businessIdea"),
-        tools: selectedTools,
-        results: validationResults,
-        timestamp: new Date().toISOString()
-      };
-      
-      const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-      savedReports.push(report);
-      localStorage.setItem("savedReports", JSON.stringify(savedReports));
-      
-      alert("Report saved successfully!");
+  const handleSaveReport = async () => {
+    requireAuth(async () => {
+      setSaving(true);
+      try {
+        const businessIdea = localStorage.getItem("businessIdea");
+        
+        // First, save the business idea
+        const { data: ideaData, error: ideaError } = await supabase
+          .from('business_ideas')
+          .insert({
+            user_id: user!.id,
+            description: businessIdea || '',
+            selected_tools: selectedTools,
+            title: businessIdea?.substring(0, 100) + (businessIdea && businessIdea.length > 100 ? '...' : '')
+          })
+          .select()
+          .single();
+
+        if (ideaError) throw ideaError;
+
+        // Then, save the validation report
+        const { error: reportError } = await supabase
+          .from('validation_reports')
+          .insert({
+            user_id: user!.id,
+            business_idea_id: ideaData.id,
+            report_data: validationResults,
+            average_score: averageScore
+          });
+
+        if (reportError) throw reportError;
+
+        toast({
+          title: "Report saved!",
+          description: "Your validation report has been saved to your account.",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Error saving report",
+          description: error.message,
+          variant: "destructive"
+        });
+      } finally {
+        setSaving(false);
+      }
     });
   };
 
   const handleExportReport = () => {
     requireAuth(() => {
-      alert("Export functionality will be added with Supabase integration");
+      toast({
+        title: "Export feature coming soon",
+        description: "PDF export will be available once Documate integration is complete.",
+      });
     });
   };
 
@@ -248,9 +285,9 @@ const Results = () => {
                         <div className="text-left flex-1">
                           <div className="flex items-center gap-3 flex-wrap mb-2">
                             <span className="text-lg">{result.title}</span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 md:hidden">
                               {getStatusIcon(result.status)}
-                              <span className={`text-xl font-bold ${getScoreColor(result.score)} sm:hidden`}>
+                              <span className={`text-xl font-bold ${getScoreColor(result.score)}`}>
                                 {result.score}/10
                               </span>
                             </div>
@@ -258,8 +295,11 @@ const Results = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <div className={`text-2xl font-bold ${getScoreColor(result.score)} hidden sm:block`}>
-                          {result.score}/10
+                        <div className="hidden md:flex items-center gap-2">
+                          {getStatusIcon(result.status)}
+                          <div className={`text-2xl font-bold ${getScoreColor(result.score)}`}>
+                            {result.score}/10
+                          </div>
                         </div>
                         {openSections[result.id] ? (
                           <ChevronUp className="w-6 h-6 text-slate-400" />
@@ -317,7 +357,7 @@ const Results = () => {
                 className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
               />
               <Button
-                onClick={() => alert("Thank you for your feedback!")}
+                onClick={() => toast({ title: "Thank you for your feedback!" })}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 Submit Feedback
@@ -327,11 +367,11 @@ const Results = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center overflow-x-auto">
+        <div className="flex flex-col sm:flex-row lg:flex-row gap-4 justify-center">
           <Button
             onClick={() => navigate("/")}
             variant="outline"
-            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
           >
             <RotateCcw className="w-5 h-5 mr-2" />
             Try New Idea
@@ -339,7 +379,7 @@ const Results = () => {
           
           <Button
             onClick={handleExportReport}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-12 px-4 flex-shrink-0"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
           >
             <Download className="w-5 h-5 mr-2" />
             Export Report
@@ -347,17 +387,18 @@ const Results = () => {
           
           <Button
             onClick={handleSaveReport}
+            disabled={saving}
             variant="outline"
-            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
           >
             <Save className="w-5 h-5 mr-2" />
-            Save Report
+            {saving ? "Saving..." : "Save Report"}
           </Button>
           
           <Button
             onClick={handleSavedReports}
             variant="outline"
-            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0"
+            className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
           >
             <FileText className="w-5 h-5 mr-2" />
             Saved Reports
