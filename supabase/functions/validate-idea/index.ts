@@ -67,7 +67,13 @@ const toolDetails = {
   'go-to-market': { icon: "🚀", title: "Go-to-Market Strategy" }
 };
 
-async function validateWithOpenAI(businessIdea: string, tool: string): Promise<any> {
+// Sleep function for delays
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function validateWithOpenAI(businessIdea: string, tool: string, retryCount = 0): Promise<any> {
+  const maxRetries = 3;
+  const baseDelay = 1000; // 1 second
+
   const prompt = `Business Idea: "${businessIdea}"
 
 ${toolPrompts[tool as keyof typeof toolPrompts]}
@@ -80,49 +86,71 @@ Please respond with a JSON object in this exact format:
   "details": "[detailed analysis with bullet points, recommendations, and specific insights]"
 }`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a startup validation expert. Analyze business ideas thoroughly and provide scores and detailed feedback. Always respond with valid JSON only.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices[0].message.content;
-  
   try {
-    const result = JSON.parse(content);
-    return {
-      id: tool,
-      ...toolDetails[tool as keyof typeof toolDetails],
-      score: result.score,
-      status: result.status,
-      summary: result.summary,
-      details: result.details
-    };
-  } catch (error) {
-    console.error('Error parsing OpenAI response:', error);
-    throw new Error('Failed to parse AI response');
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a startup validation expert. Analyze business ideas thoroughly and provide scores and detailed feedback. Always respond with valid JSON only.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`OpenAI API error response: ${response.status} ${response.statusText} - ${errorText}`);
+      
+      // Handle rate limiting specifically
+      if (response.status === 429 && retryCount < maxRetries) {
+        const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
+        console.log(`Rate limited, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+        await sleep(delay);
+        return validateWithOpenAI(businessIdea, tool, retryCount + 1);
+      }
+      
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    try {
+      const result = JSON.parse(content);
+      return {
+        id: tool,
+        ...toolDetails[tool as keyof typeof toolDetails],
+        score: result.score,
+        status: result.status,
+        summary: result.summary,
+        details: result.details
+      };
+    } catch (error) {
+      console.error('Error parsing OpenAI response:', error);
+      console.error('Raw content:', content);
+      throw new Error('Failed to parse AI response');
+    }
+  } catch (error: any) {
+    if (retryCount < maxRetries && error.message.includes('429')) {
+      const delay = baseDelay * Math.pow(2, retryCount);
+      console.log(`Error with retry logic, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+      await sleep(delay);
+      return validateWithOpenAI(businessIdea, tool, retryCount + 1);
+    }
+    throw error;
   }
 }
 
@@ -144,22 +172,46 @@ serve(async (req) => {
 
     console.log('Validating business idea with tools:', selectedTools);
 
-    // Run all validations in parallel
-    const validationPromises = selectedTools.map(tool => 
-      validateWithOpenAI(businessIdea, tool)
-    );
-
-    const results = await Promise.all(validationPromises);
+    // Run validations sequentially to avoid rate limiting
+    const results = [];
+    for (const tool of selectedTools) {
+      console.log(`Processing tool: ${tool}`);
+      try {
+        const result = await validateWithOpenAI(businessIdea, tool);
+        results.push(result);
+        console.log(`Completed tool: ${tool}`);
+        
+        // Add a small delay between requests to be respectful to the API
+        if (selectedTools.indexOf(tool) < selectedTools.length - 1) {
+          await sleep(500); // 500ms delay between requests
+        }
+      } catch (error: any) {
+        console.error(`Error processing tool ${tool}:`, error);
+        // Return partial results if some tools succeeded
+        if (results.length > 0) {
+          console.log('Returning partial results due to error');
+          break;
+        } else {
+          throw error; // Re-throw if no tools succeeded
+        }
+      }
+    }
     
-    // Calculate average score
+    if (results.length === 0) {
+      throw new Error('No validation results could be generated');
+    }
+    
+    // Calculate average score from successful results
     const averageScore = results.reduce((sum, result) => sum + result.score, 0) / results.length;
 
-    console.log('Validation completed, average score:', averageScore);
+    console.log(`Validation completed with ${results.length}/${selectedTools.length} tools, average score:`, averageScore);
 
     return new Response(
       JSON.stringify({ 
         results,
-        averageScore: Number(averageScore.toFixed(1))
+        averageScore: Number(averageScore.toFixed(1)),
+        completedTools: results.length,
+        totalTools: selectedTools.length
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -168,7 +220,10 @@ serve(async (req) => {
   } catch (error: any) {
     console.error('Error in validate-idea function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'An unexpected error occurred',
+        details: 'Please try again. If the problem persists, you may have hit API rate limits.'
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
