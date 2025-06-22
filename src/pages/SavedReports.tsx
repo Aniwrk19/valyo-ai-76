@@ -7,6 +7,7 @@ import { FileText, Eye, Edit, Trash2, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import type { Json } from "@/integrations/supabase/types";
 
 interface SavedReport {
   id: string;
@@ -16,7 +17,7 @@ interface SavedReport {
     description: string;
     selected_tools: string[];
   };
-  report_data: any[];
+  report_data: Json;
   average_score: number;
   created_at: string;
 }
