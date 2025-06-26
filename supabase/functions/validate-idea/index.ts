@@ -3,7 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
@@ -42,14 +42,6 @@ Provide a score from 1-10 and detailed analysis with actionable insights.`,
 - Customer journey mapping
 Provide a score from 1-10 and detailed analysis with specific recommendations.`,
 
-  'competitor-analysis': `Conduct a competitive landscape analysis for this business idea. Evaluate:
-- Market positioning opportunities
-- Competitive advantages and differentiation
-- Barriers to entry
-- Market gaps and opportunities
-- Competitive risks and threats
-Provide a score from 1-10 and detailed analysis with strategic insights.`,
-
   'go-to-market': `Assess the go-to-market strategy potential for this business idea. Review:
 - Distribution channel opportunities
 - Pricing strategy considerations
@@ -63,14 +55,13 @@ const toolDetails = {
   'business-idea': { icon: "💡", title: "Business Idea Validator" },
   'problem-solution': { icon: "❓", title: "Problem-Solution Fit" },
   'target-audience': { icon: "👥", title: "Target Audience Analysis" },
-  'competitor-analysis': { icon: "⚔️", title: "Competitive Landscape" },
   'go-to-market': { icon: "🚀", title: "Go-to-Market Strategy" }
 };
 
 // Sleep function for delays
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function validateWithOpenAI(businessIdea: string, tool: string, retryCount = 0): Promise<any> {
+async function validateWithGemini(businessIdea: string, tool: string, retryCount = 0): Promise<any> {
   const maxRetries = 3;
   const baseDelay = 1000; // 1 second
 
@@ -87,46 +78,41 @@ Please respond with a JSON object in this exact format:
 }`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a startup validation expert. Analyze business ideas thoroughly and provide scores and detailed feedback. Always respond with valid JSON only.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
+        contents: [{
+          parts: [{
+            text: `You are a startup validation expert. Analyze business ideas thoroughly and provide scores and detailed feedback. Always respond with valid JSON only.\n\n${prompt}`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2000,
+        }
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`OpenAI API error response: ${response.status} ${response.statusText} - ${errorText}`);
+      console.error(`Gemini API error response: ${response.status} ${response.statusText} - ${errorText}`);
       
       // Handle rate limiting specifically
       if (response.status === 429 && retryCount < maxRetries) {
         const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
         console.log(`Rate limited, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
         await sleep(delay);
-        return validateWithOpenAI(businessIdea, tool, retryCount + 1);
+        return validateWithGemini(businessIdea, tool, retryCount + 1);
       }
       
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    const content = data.candidates[0].content.parts[0].text;
     
     try {
       const result = JSON.parse(content);
@@ -139,7 +125,7 @@ Please respond with a JSON object in this exact format:
         details: result.details
       };
     } catch (error) {
-      console.error('Error parsing OpenAI response:', error);
+      console.error('Error parsing Gemini response:', error);
       console.error('Raw content:', content);
       throw new Error('Failed to parse AI response');
     }
@@ -148,7 +134,7 @@ Please respond with a JSON object in this exact format:
       const delay = baseDelay * Math.pow(2, retryCount);
       console.log(`Error with retry logic, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
       await sleep(delay);
-      return validateWithOpenAI(businessIdea, tool, retryCount + 1);
+      return validateWithGemini(businessIdea, tool, retryCount + 1);
     }
     throw error;
   }
@@ -177,7 +163,7 @@ serve(async (req) => {
     for (const tool of selectedTools) {
       console.log(`Processing tool: ${tool}`);
       try {
-        const result = await validateWithOpenAI(businessIdea, tool);
+        const result = await validateWithGemini(businessIdea, tool);
         results.push(result);
         console.log(`Completed tool: ${tool}`);
         
