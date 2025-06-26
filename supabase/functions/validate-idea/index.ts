@@ -61,6 +61,17 @@ const toolDetails = {
 // Sleep function for delays
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Function to extract JSON from markdown code blocks
+function extractJsonFromMarkdown(content: string): string {
+  // Remove markdown code block markers if present
+  const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    return jsonMatch[1].trim();
+  }
+  // If no code blocks found, return the content as-is
+  return content.trim();
+}
+
 async function validateWithGemini(businessIdea: string, tool: string, retryCount = 0): Promise<any> {
   const maxRetries = 3;
   const baseDelay = 1000; // 1 second
@@ -86,7 +97,7 @@ Please respond with a JSON object in this exact format:
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `You are a startup validation expert. Analyze business ideas thoroughly and provide scores and detailed feedback. Always respond with valid JSON only.\n\n${prompt}`
+            text: `You are a startup validation expert. Analyze business ideas thoroughly and provide scores and detailed feedback. Always respond with valid JSON only, no markdown formatting.\n\n${prompt}`
           }]
         }],
         generationConfig: {
@@ -114,8 +125,14 @@ Please respond with a JSON object in this exact format:
     const data = await response.json();
     const content = data.candidates[0].content.parts[0].text;
     
+    console.log(`Raw Gemini response for ${tool}:`, content);
+    
     try {
-      const result = JSON.parse(content);
+      // Extract JSON from potential markdown wrapping
+      const cleanedContent = extractJsonFromMarkdown(content);
+      console.log(`Cleaned content for ${tool}:`, cleanedContent);
+      
+      const result = JSON.parse(cleanedContent);
       return {
         id: tool,
         ...toolDetails[tool as keyof typeof toolDetails],
@@ -157,6 +174,7 @@ serve(async (req) => {
     }
 
     console.log('Validating business idea with tools:', selectedTools);
+    console.log('Business idea:', businessIdea);
 
     // Run validations sequentially to avoid rate limiting
     const results = [];
@@ -165,7 +183,7 @@ serve(async (req) => {
       try {
         const result = await validateWithGemini(businessIdea, tool);
         results.push(result);
-        console.log(`Completed tool: ${tool}`);
+        console.log(`Completed tool: ${tool} with score: ${result.score}`);
         
         // Add a small delay between requests to be respectful to the API
         if (selectedTools.indexOf(tool) < selectedTools.length - 1) {
