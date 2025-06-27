@@ -27,6 +27,7 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
   const { user } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const requireAuth = (action: () => void) => {
     if (!user) {
@@ -89,12 +90,69 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
     });
   };
 
-  const handleExportReport = () => {
-    requireAuth(() => {
-      toast({
-        title: "Export feature coming soon",
-        description: "PDF export will be available once Documate integration is complete.",
-      });
+  const handleExportReport = async () => {
+    requireAuth(async () => {
+      setExporting(true);
+      try {
+        const businessIdea = localStorage.getItem("businessIdea");
+        
+        if (!businessIdea) {
+          throw new Error("Business idea not found");
+        }
+
+        console.log('Generating PDF report...');
+        
+        const { data, error } = await supabase.functions.invoke('generate-pdf-report', {
+          body: {
+            validationResults,
+            averageScore,
+            businessIdea
+          }
+        });
+
+        if (error) {
+          console.error('PDF generation error:', error);
+          throw error;
+        }
+
+        // Convert the response to a blob
+        const response = await supabase.functions.invoke('generate-pdf-report', {
+          body: {
+            validationResults,
+            averageScore,
+            businessIdea
+          }
+        });
+
+        if (response.error) {
+          throw response.error;
+        }
+
+        // Create a download link for the PDF
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `validation-report-${Date.now()}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast({
+          title: "Report exported!",
+          description: "Your validation report has been downloaded as a PDF.",
+        });
+      } catch (error: any) {
+        console.error('Export error:', error);
+        toast({
+          title: "Error exporting report",
+          description: error.message || "Failed to generate PDF. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setExporting(false);
+      }
     });
   };
 
@@ -117,10 +175,11 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
       
       <Button
         onClick={handleExportReport}
+        disabled={exporting}
         className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
       >
         <Download className="w-5 h-5 mr-2" />
-        Export Report
+        {exporting ? "Generating..." : "Export Report"}
       </Button>
       
       <Button
