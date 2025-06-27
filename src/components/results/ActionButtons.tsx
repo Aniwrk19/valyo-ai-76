@@ -102,34 +102,36 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
 
         console.log('Generating PDF report...');
         
-        const { data, error } = await supabase.functions.invoke('generate-pdf-report', {
-          body: {
-            validationResults,
-            averageScore,
-            businessIdea
-          }
-        });
-
-        if (error) {
-          console.error('PDF generation error:', error);
-          throw error;
+        // Get the current session to include the access token
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.access_token) {
+          throw new Error("No valid session found");
         }
 
-        // Convert the response to a blob
-        const response = await supabase.functions.invoke('generate-pdf-report', {
-          body: {
-            validationResults,
-            averageScore,
-            businessIdea
+        const response = await fetch(
+          `https://dsdhpddjdcaoyhbygfeg.supabase.co/functions/v1/generate-pdf-report`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              validationResults,
+              averageScore,
+              businessIdea
+            })
           }
-        });
+        );
 
-        if (response.error) {
-          throw response.error;
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
         }
 
         // Create a download link for the PDF
-        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -141,7 +143,7 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
 
         toast({
           title: "Report exported!",
-          description: "Your validation report has been downloaded as a PDF.",
+          description: "Your validation report has been downloaded as a PDF and saved to your account.",
         });
       } catch (error: any) {
         console.error('Export error:', error);

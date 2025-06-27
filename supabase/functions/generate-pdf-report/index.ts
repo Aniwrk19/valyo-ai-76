@@ -1,8 +1,11 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
 const documateApiKey = Deno.env.get('DOCUMATE_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,6 +35,30 @@ serve(async (req) => {
   }
 
   try {
+    // Get the authorization header to identify the user
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create Supabase client to get user info
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Get user from JWT token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid user token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { validationResults, averageScore, businessIdea }: PDFRequest = await req.json();
     
     if (!validationResults || !businessIdea) {
@@ -41,12 +68,12 @@ serve(async (req) => {
       );
     }
 
-    console.log('Generating PDF report for:', businessIdea);
+    console.log('Generating PDF report for user:', user.id, 'with idea:', businessIdea);
 
     // Create the HTML content for the PDF
     const htmlContent = generateReportHTML(validationResults, averageScore, businessIdea);
 
-    // Call Documate API to generate PDF
+    // Call Documate API to generate PDF with correct authorization format
     const response = await fetch('https://api.documate.org/v1/generate', {
       method: 'POST',
       headers: {
@@ -76,11 +103,33 @@ serve(async (req) => {
 
     // Get the PDF blob from Documate
     const pdfBlob = await response.blob();
+    const pdfArrayBuffer = await pdfBlob.arrayBuffer();
     
-    console.log('PDF generated successfully');
+    console.log('PDF generated successfully, size:', pdfArrayBuffer.byteLength);
+
+    // Save export record to database
+    const exportRecord = {
+      user_id: user.id,
+      business_idea: businessIdea,
+      validation_results: validationResults,
+      average_score: averageScore,
+      export_type: 'pdf',
+      file_size: pdfArrayBuffer.byteLength
+    };
+
+    const { error: saveError } = await supabase
+      .from('exported_reports')
+      .insert(exportRecord);
+
+    if (saveError) {
+      console.error('Error saving export record:', saveError);
+      // Don't fail the request if we can't save the record, just log it
+    } else {
+      console.log('Export record saved for user:', user.id);
+    }
 
     // Return the PDF as a response
-    return new Response(pdfBlob, {
+    return new Response(pdfArrayBuffer, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'application/pdf',
