@@ -11,7 +11,12 @@ interface ValidationResult {
   score: number;
   status: string;
   summary: string;
-  details: string;
+  details: string | Array<{
+    aspect: string;
+    score: number;
+    analysis: string;
+    recommendations: string[];
+  }>;
 }
 
 interface ValidationResultCardProps {
@@ -33,6 +38,64 @@ const getStatusIcon = (status: string) => {
     case "needs-work": return <XCircle className="w-5 h-5 text-red-400" />;
     default: return null;
   }
+};
+
+const renderDetails = (details: string | Array<any>) => {
+  // If it's a string, render as is
+  if (typeof details === 'string') {
+    return (
+      <div className="text-slate-300 whitespace-pre-line leading-relaxed">
+        {details}
+      </div>
+    );
+  }
+
+  // If it's an array of structured data, render it properly
+  if (Array.isArray(details)) {
+    return (
+      <div className="space-y-6">
+        {details.map((item, index) => (
+          <div key={index} className="border-l-4 border-blue-500/30 pl-4">
+            <div className="flex items-center gap-3 mb-2">
+              <h4 className="text-lg font-semibold text-white">{item.aspect}</h4>
+              {item.score && (
+                <span className={`text-sm font-bold px-2 py-1 rounded ${getScoreColor(item.score)} bg-slate-800`}>
+                  {item.score}/10
+                </span>
+              )}
+            </div>
+            
+            {item.analysis && (
+              <div className="mb-3">
+                <p className="text-slate-300 leading-relaxed">{item.analysis}</p>
+              </div>
+            )}
+            
+            {item.recommendations && item.recommendations.length > 0 && (
+              <div>
+                <h5 className="text-sm font-semibold text-blue-400 mb-2">Recommendations:</h5>
+                <ul className="space-y-1 text-slate-300">
+                  {item.recommendations.map((rec, recIndex) => (
+                    <li key={recIndex} className="flex items-start gap-2">
+                      <span className="text-blue-400 mt-1">•</span>
+                      <span className="text-sm leading-relaxed">{rec}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Fallback for any other data type
+  return (
+    <div className="text-slate-300 whitespace-pre-line leading-relaxed">
+      {JSON.stringify(details, null, 2)}
+    </div>
+  );
 };
 
 export const ValidationResultCard = ({ result, isOpen, onToggle }: ValidationResultCardProps) => {
@@ -77,9 +140,7 @@ export const ValidationResultCard = ({ result, isOpen, onToggle }: ValidationRes
         <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="prose prose-invert max-w-none">
-              <div className="text-slate-300 whitespace-pre-line leading-relaxed">
-                {result.details}
-              </div>
+              {renderDetails(result.details)}
             </div>
           </CardContent>
         </CollapsibleContent>
