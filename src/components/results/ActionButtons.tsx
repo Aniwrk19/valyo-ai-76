@@ -7,6 +7,8 @@ import { RotateCcw, Download, Save, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface ValidationResult {
   id: string;
@@ -101,67 +103,80 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
           throw new Error("Business idea not found");
         }
 
-        console.log('Generating document report...');
+        console.log('Generating PDF report using html2canvas...');
         
-        // Get the current session to include the access token
-        const { data: { session } } = await supabase.auth.getSession();
+        // Find the main results container
+        const resultsContainer = document.querySelector('.w-full.max-w-4xl.mx-auto.py-8');
         
-        if (!session?.access_token) {
-          throw new Error("No valid session found");
+        if (!resultsContainer) {
+          throw new Error("Results container not found");
         }
 
-        const response = await fetch(
-          `https://dsdhpddjdcaoyhbygfeg.supabase.co/functions/v1/generate-pdf-report`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              validationResults,
-              averageScore,
-              businessIdea
-            })
-          }
-        );
+        // Create canvas from the results container
+        const canvas = await html2canvas(resultsContainer as HTMLElement, {
+          backgroundColor: '#0f172a', // Match the dark background
+          scale: 2, // Higher quality
+          useCORS: true,
+          allowTaint: true,
+          height: resultsContainer.scrollHeight,
+          width: resultsContainer.scrollWidth
+        });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        // Create PDF
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 210; // A4 width in mm
+        const pageHeight = 295; // A4 height in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+
+        let position = 0;
+
+        // Add first page
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        // Add additional pages if needed
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
         }
 
-        // Determine file type and extension from response headers
-        const contentType = response.headers.get('content-type');
-        const contentDisposition = response.headers.get('content-disposition');
-        let fileExtension = 'pdf';
-        let fileType = 'PDF';
-        
-        if (contentType?.includes('text/html')) {
-          fileExtension = 'html';
-          fileType = 'HTML';
-        }
+        // Save the PDF
+        pdf.save(`validation-report-${Date.now()}.pdf`);
 
-        // Create a download link for the document
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `validation-report-${Date.now()}.${fileExtension}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        // Save export record to database
+        const { error: saveError } = await supabase
+          .from('exported_reports')
+          .insert({
+            user_id: user!.id,
+            business_idea: businessIdea,
+            validation_results: validationResults,
+            average_score: averageScore,
+            export_type: 'pdf',
+            file_size: Math.round(imgData.length * 0.75) // Approximate PDF size
+          });
+
+        if (saveError) {
+          console.error('Error saving export record:', saveError);
+        }
 
         toast({
           title: "Report exported!",
-          description: `Your validation report has been downloaded as a ${fileType} and saved to your account.`,
+          description: "Your validation report has been downloaded as a PDF.",
         });
       } catch (error: any) {
         console.error('Export error:', error);
         toast({
           title: "Error exporting report",
-          description: error.message || "Failed to generate document. Please try again.",
+          description: error.message || "Failed to generate PDF. Please try again.",
           variant: "destructive"
         });
       } finally {
