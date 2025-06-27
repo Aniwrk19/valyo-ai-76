@@ -152,22 +152,6 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
         // Save the PDF
         pdf.save(`validation-report-${Date.now()}.pdf`);
 
-        // Save export record to database
-        const { error: saveError } = await supabase
-          .from('exported_reports')
-          .insert({
-            user_id: user!.id,
-            business_idea: businessIdea,
-            validation_results: validationResults,
-            average_score: averageScore,
-            export_type: 'pdf',
-            file_size: Math.round(imgData.length * 0.75) // Approximate PDF size
-          });
-
-        if (saveError) {
-          console.error('Error saving export record:', saveError);
-        }
-
         toast({
           title: "Report exported!",
           description: "Your validation report has been downloaded as a PDF.",
