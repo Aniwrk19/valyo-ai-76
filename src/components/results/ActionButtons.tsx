@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, Download, Save, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -100,7 +101,7 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
           throw new Error("Business idea not found");
         }
 
-        console.log('Generating PDF report...');
+        console.log('Generating document report...');
         
         // Get the current session to include the access token
         const { data: { session } } = await supabase.auth.getSession();
@@ -130,12 +131,23 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
           throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        // Create a download link for the PDF
+        // Determine file type and extension from response headers
+        const contentType = response.headers.get('content-type');
+        const contentDisposition = response.headers.get('content-disposition');
+        let fileExtension = 'pdf';
+        let fileType = 'PDF';
+        
+        if (contentType?.includes('text/html')) {
+          fileExtension = 'html';
+          fileType = 'HTML';
+        }
+
+        // Create a download link for the document
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `validation-report-${Date.now()}.pdf`;
+        link.download = `validation-report-${Date.now()}.${fileExtension}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -143,13 +155,13 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
 
         toast({
           title: "Report exported!",
-          description: "Your validation report has been downloaded as a PDF and saved to your account.",
+          description: `Your validation report has been downloaded as a ${fileType} and saved to your account.`,
         });
       } catch (error: any) {
         console.error('Export error:', error);
         toast({
           title: "Error exporting report",
-          description: error.message || "Failed to generate PDF. Please try again.",
+          description: error.message || "Failed to generate document. Please try again.",
           variant: "destructive"
         });
       } finally {
@@ -165,43 +177,56 @@ export const ActionButtons = ({ validationResults, averageScore }: ActionButtons
   };
 
   return (
-    <div className="flex flex-col sm:flex-row lg:flex-row gap-4 justify-center">
-      <Button
-        onClick={() => navigate("/")}
-        variant="outline"
-        className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
-      >
-        <RotateCcw className="w-5 h-5 mr-2" />
-        Try New Idea
-      </Button>
+    <motion.div 
+      className="flex flex-col sm:flex-row lg:flex-row gap-4 justify-center"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.2 }}
+    >
+      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+        <Button
+          onClick={() => navigate("/")}
+          variant="outline"
+          className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
+        >
+          <RotateCcw className="w-5 h-5 mr-2" />
+          Try New Idea
+        </Button>
+      </motion.div>
       
-      <Button
-        onClick={handleExportReport}
-        disabled={exporting}
-        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
-      >
-        <Download className="w-5 h-5 mr-2" />
-        {exporting ? "Generating..." : "Export Report"}
-      </Button>
+      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+        <Button
+          onClick={handleExportReport}
+          disabled={exporting}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
+        >
+          <Download className="w-5 h-5 mr-2" />
+          {exporting ? "Generating..." : "Export Report"}
+        </Button>
+      </motion.div>
       
-      <Button
-        onClick={handleSaveReport}
-        disabled={saving}
-        variant="outline"
-        className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
-      >
-        <Save className="w-5 h-5 mr-2" />
-        {saving ? "Saving..." : "Save Report"}
-      </Button>
+      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+        <Button
+          onClick={handleSaveReport}
+          disabled={saving}
+          variant="outline"
+          className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
+        >
+          <Save className="w-5 h-5 mr-2" />
+          {saving ? "Saving..." : "Save Report"}
+        </Button>
+      </motion.div>
       
-      <Button
-        onClick={handleSavedReports}
-        variant="outline"
-        className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
-      >
-        <FileText className="w-5 h-5 mr-2" />
-        Saved Reports
-      </Button>
-    </div>
+      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+        <Button
+          onClick={handleSavedReports}
+          variant="outline"
+          className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 h-12 px-4 flex-shrink-0 text-sm lg:text-base"
+        >
+          <FileText className="w-5 h-5 mr-2" />
+          Saved Reports
+        </Button>
+      </motion.div>
+    </motion.div>
   );
 };

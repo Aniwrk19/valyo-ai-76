@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
@@ -69,19 +68,28 @@ serve(async (req) => {
     }
 
     console.log('Generating PDF report for user:', user.id, 'with idea:', businessIdea);
+    console.log('Using Documate API key:', documateApiKey ? 'Present' : 'Missing');
+
+    if (!documateApiKey) {
+      return new Response(
+        JSON.stringify({ error: 'Documate API key is not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Create the HTML content for the PDF
     const htmlContent = generateReportHTML(validationResults, averageScore, businessIdea);
 
-    // Call Documate API to generate PDF with correct authorization format
-    const response = await fetch('https://api.documate.org/v1/generate', {
+    // Call Documate API to generate PDF with correct format
+    const documateResponse = await fetch('https://api.documate.org/v1/generate', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${documateApiKey}`,
+        'Authorization': `${documateApiKey}`, // Remove "Bearer " prefix
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         html: htmlContent,
+        format: 'pdf',
         options: {
           format: 'A4',
           printBackground: true,
@@ -95,14 +103,69 @@ serve(async (req) => {
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Documate API error: ${response.status} ${response.statusText} - ${errorText}`);
-      throw new Error(`Failed to generate PDF: ${response.status} ${response.statusText}`);
+    console.log('Documate response status:', documateResponse.status);
+    console.log('Documate response headers:', Object.fromEntries(documateResponse.headers.entries()));
+
+    if (!documateResponse.ok) {
+      const errorText = await documateResponse.text();
+      console.error(`Documate API error: ${documateResponse.status} ${documateResponse.statusText} - ${errorText}`);
+      
+      // Try alternative format if PDF fails
+      console.log('PDF generation failed, trying HTML format...');
+      
+      const htmlResponse = await fetch('https://api.documate.org/v1/generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `${documateApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          html: htmlContent,
+          format: 'html'
+        }),
+      });
+
+      if (!htmlResponse.ok) {
+        const htmlErrorText = await htmlResponse.text();
+        console.error(`HTML generation also failed: ${htmlResponse.status} - ${htmlErrorText}`);
+        throw new Error(`Failed to generate document: ${documateResponse.status} ${documateResponse.statusText}`);
+      }
+
+      // Return HTML file
+      const htmlBlob = await htmlResponse.blob();
+      const htmlArrayBuffer = await htmlBlob.arrayBuffer();
+      
+      console.log('HTML document generated successfully, size:', htmlArrayBuffer.byteLength);
+
+      // Save export record to database
+      const exportRecord = {
+        user_id: user.id,
+        business_idea: businessIdea,
+        validation_results: validationResults,
+        average_score: averageScore,
+        export_type: 'html',
+        file_size: htmlArrayBuffer.byteLength
+      };
+
+      const { error: saveError } = await supabase
+        .from('exported_reports')
+        .insert(exportRecord);
+
+      if (saveError) {
+        console.error('Error saving export record:', saveError);
+      }
+
+      return new Response(htmlArrayBuffer, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/html',
+          'Content-Disposition': `attachment; filename="validation-report-${Date.now()}.html"`,
+        },
+      });
     }
 
     // Get the PDF blob from Documate
-    const pdfBlob = await response.blob();
+    const pdfBlob = await documateResponse.blob();
     const pdfArrayBuffer = await pdfBlob.arrayBuffer();
     
     console.log('PDF generated successfully, size:', pdfArrayBuffer.byteLength);
@@ -123,7 +186,6 @@ serve(async (req) => {
 
     if (saveError) {
       console.error('Error saving export record:', saveError);
-      // Don't fail the request if we can't save the record, just log it
     } else {
       console.log('Export record saved for user:', user.id);
     }
@@ -142,7 +204,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message || 'An unexpected error occurred',
-        details: 'Please try again. If the problem persists, check your Documate API key.'
+        details: 'Please try again. If the problem persists, check your Documate API key configuration.'
       }),
       {
         status: 500,
