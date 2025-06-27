@@ -14,65 +14,82 @@ export const ExportPdfButton = () => {
   const handleExportReport = async () => {
     setExporting(true);
     try {
-      const businessIdea = localStorage.getItem("businessIdea");
+      console.log('Generating PDF report...');
       
-      if (!businessIdea) {
-        throw new Error("Business idea not found");
-      }
-
-      console.log('Generating PDF report using html2canvas...');
+      // Find the results header and validation results sections only
+      const headerElement = document.querySelector('[data-export="results-header"]') as HTMLElement;
+      const validationResultsElement = document.querySelector('[data-export="validation-results"]') as HTMLElement;
       
-      // Find the main results container
-      const resultsContainer = document.querySelector('.w-full.max-w-4xl.mx-auto.py-8');
-      
-      if (!resultsContainer) {
-        throw new Error("Results container not found");
+      if (!headerElement || !validationResultsElement) {
+        // Fallback: try to find by class names if data attributes aren't found
+        const header = document.querySelector('.text-center.mb-12.animate-fade-in') as HTMLElement;
+        const results = document.querySelector('.space-y-6.mb-12') as HTMLElement;
+        
+        if (!header || !results) {
+          throw new Error("Could not find the validation report sections to export");
+        }
+        
+        // Create a temporary container with just the content we want
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.top = '0';
+        tempContainer.style.width = '800px';
+        tempContainer.style.backgroundColor = '#0f172a';
+        tempContainer.style.padding = '32px';
+        tempContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+        
+        // Clone and append the header and results
+        const headerClone = header.cloneNode(true) as HTMLElement;
+        const resultsClone = results.cloneNode(true) as HTMLElement;
+        
+        tempContainer.appendChild(headerClone);
+        tempContainer.appendChild(resultsClone);
+        document.body.appendChild(tempContainer);
+        
+        // Create canvas from the temporary container
+        const canvas = await html2canvas(tempContainer, {
+          backgroundColor: '#0f172a',
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          width: 800,
+          height: tempContainer.scrollHeight
+        });
+        
+        // Remove temporary container
+        document.body.removeChild(tempContainer);
+        
+        // Create PDF
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 210; // A4 width in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // Scale to fit on single page if needed
+        if (imgHeight > 295) { // A4 height
+          const scale = 295 / imgHeight;
+          const scaledWidth = imgWidth * scale;
+          const scaledHeight = 295;
+          const xOffset = (210 - scaledWidth) / 2;
+          pdf.addImage(imgData, 'PNG', xOffset, 0, scaledWidth, scaledHeight);
+        } else {
+          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+        }
+        
+        // Save the PDF
+        pdf.save(`validation-report-${Date.now()}.pdf`);
+        
+        toast({
+          title: "Report exported!",
+          description: "Your validation report has been downloaded as a PDF.",
+        });
       }
-
-      // Create canvas from the results container
-      const canvas = await html2canvas(resultsContainer as HTMLElement, {
-        backgroundColor: '#0f172a', // Match the dark background
-        scale: 2, // Higher quality
-        useCORS: true,
-        allowTaint: true,
-        height: resultsContainer.scrollHeight,
-        width: resultsContainer.scrollWidth
-      });
-
-      // Create PDF
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-
-      let position = 0;
-
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      // Add additional pages if needed
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      // Save the PDF
-      pdf.save(`validation-report-${Date.now()}.pdf`);
-
-      toast({
-        title: "Report exported!",
-        description: "Your validation report has been downloaded as a PDF.",
-      });
     } catch (error: any) {
       console.error('Export error:', error);
       toast({

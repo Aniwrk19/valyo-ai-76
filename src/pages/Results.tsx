@@ -57,7 +57,7 @@ const Results = () => {
         <ResultsHeader averageScore={averageScore} />
 
         {/* Validation Results */}
-        <div className="space-y-6 mb-12">
+        <div className="space-y-6 mb-12" data-export="validation-results">
           {validationResults.map((result) => (
             <ValidationResultCard
               key={result.id}
