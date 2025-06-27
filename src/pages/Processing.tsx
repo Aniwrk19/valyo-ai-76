@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Brain, Zap, Target, Users, AlertTriangle } from "lucide-react";
+import { Loader2, Brain, Zap, Target, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -10,14 +10,16 @@ const Processing = () => {
   const { toast } = useToast();
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
+    // Get selected tools from localStorage
     const tools = localStorage.getItem("selectedTools");
     const businessIdea = localStorage.getItem("businessIdea");
     
     if (tools && businessIdea) {
       setSelectedTools(JSON.parse(tools));
+      
+      // Start validation process
       validateIdea(businessIdea, JSON.parse(tools));
     } else {
       navigate("/");
@@ -36,9 +38,9 @@ const Processing = () => {
             return prev;
           }
         });
-      }, 2000); // Slower progression to account for longer processing time
+      }, 800);
 
-      console.log('Calling validation service...');
+      console.log('Calling OpenAI validation...');
       
       const { data, error } = await supabase.functions.invoke('validate-idea', {
         body: {
@@ -48,7 +50,6 @@ const Processing = () => {
       });
 
       clearInterval(stepInterval);
-      setCurrentStep(tools.length); // Mark all as complete
 
       if (error) {
         console.error('Validation error:', error);
@@ -57,15 +58,6 @@ const Processing = () => {
 
       console.log('Validation results:', data);
 
-      // Handle partial results
-      if (data.warning || data.completedTools < data.totalTools) {
-        toast({
-          title: "Partial Results",
-          description: data.warning || `Only ${data.completedTools} out of ${data.totalTools} tools completed successfully.`,
-          variant: "default"
-        });
-      }
-
       // Store results in localStorage for the Results page
       localStorage.setItem("validationResults", JSON.stringify(data.results));
       localStorage.setItem("averageScore", data.averageScore.toString());
@@ -73,31 +65,20 @@ const Processing = () => {
       // Navigate to results after a brief delay
       setTimeout(() => {
         navigate("/results");
-      }, 1500);
+      }, 1000);
 
     } catch (error: any) {
       console.error('Error during validation:', error);
-      setIsProcessing(false);
+      toast({
+        title: "Validation Error",
+        description: error.message || "Failed to validate your idea. Please try again.",
+        variant: "destructive"
+      });
       
-      // Handle different types of errors
-      if (error.message?.includes('503') || error.message?.includes('overloaded')) {
-        toast({
-          title: "Service Temporarily Unavailable",
-          description: "The AI validation service is currently overloaded. Please try again in a few minutes.",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Validation Error",
-          description: error.message || "Failed to validate your idea. Please try again.",
-          variant: "destructive"
-        });
-      }
-      
-      // Navigate back to home on error after delay
+      // Navigate back to home on error
       setTimeout(() => {
         navigate("/");
-      }, 3000);
+      }, 2000);
     }
   };
 
@@ -121,24 +102,17 @@ const Processing = () => {
               <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 animate-spin"></div>
               <div className="absolute inset-4 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                {isProcessing ? (
-                  <Brain className="w-12 h-12 text-blue-400 animate-pulse" />
-                ) : (
-                  <AlertTriangle className="w-12 h-12 text-red-400 animate-pulse" />
-                )}
+                <Brain className="w-12 h-12 text-blue-400 animate-pulse" />
               </div>
             </div>
           </div>
 
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4 px-2 py-2">
-            {isProcessing ? "Analyzing your idea..." : "Processing stopped"}
+            Analyzing your idea...
           </h1>
           
           <p className="text-xl text-slate-400 mb-8">
-            {isProcessing 
-              ? `Running ${activeSteps.length} AI-powered validation tools`
-              : "Redirecting you back to try again..."
-            }
+            Running {activeSteps.length} AI-powered validation tools
           </p>
         </div>
 
@@ -152,7 +126,6 @@ const Processing = () => {
               delay={step.delay}
               isActive={index <= currentStep}
               isCompleted={index < currentStep}
-              hasError={!isProcessing && index === currentStep}
             />
           ))}
         </div>
@@ -166,26 +139,22 @@ const AnalysisStep = ({
   label, 
   delay, 
   isActive, 
-  isCompleted,
-  hasError = false
+  isCompleted 
 }: { 
   icon: any, 
   label: string, 
   delay: number,
   isActive: boolean,
-  isCompleted: boolean,
-  hasError?: boolean
+  isCompleted: boolean
 }) => {
   return (
     <div 
       className={`flex items-center justify-center gap-4 p-4 backdrop-blur-sm border rounded-xl transition-all duration-500 ${
-        hasError
-          ? 'bg-red-900/20 border-red-400/30'
-          : isCompleted 
-            ? 'bg-green-900/20 border-green-400/30' 
-            : isActive 
-              ? 'bg-blue-900/20 border-blue-400/30' 
-              : 'bg-white/5 border-white/10'
+        isCompleted 
+          ? 'bg-green-900/20 border-green-400/30' 
+          : isActive 
+            ? 'bg-blue-900/20 border-blue-400/30' 
+            : 'bg-white/5 border-white/10'
       } animate-fade-in opacity-0`}
       style={{ 
         animationDelay: `${delay}ms`,
@@ -193,20 +162,16 @@ const AnalysisStep = ({
       }}
     >
       <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-        hasError
-          ? 'bg-gradient-to-r from-red-600 to-red-700'
-          : isCompleted 
-            ? 'bg-gradient-to-r from-green-600 to-emerald-600' 
-            : isActive 
-              ? 'bg-gradient-to-r from-blue-600 to-purple-600' 
-              : 'bg-slate-700'
+        isCompleted 
+          ? 'bg-gradient-to-r from-green-600 to-emerald-600' 
+          : isActive 
+            ? 'bg-gradient-to-r from-blue-600 to-purple-600' 
+            : 'bg-slate-700'
       }`}>
         <Icon className="w-5 h-5 text-white" />
       </div>
       <span className="text-white font-medium flex-1 text-left">{label}</span>
-      {hasError ? (
-        <AlertTriangle className="w-5 h-5 text-red-400" />
-      ) : isCompleted ? (
+      {isCompleted ? (
         <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
           <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

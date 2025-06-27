@@ -27,27 +27,25 @@ const pageVariants = {
 const pageTransition = {
   type: "tween" as const,
   ease: "anticipate" as const,
-  duration: 0.6 // Increased from 0.4 to make it smoother
+  duration: 0.4
 };
 
 export const PageTransition = ({ children }: PageTransitionProps) => {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={location.pathname}
-          initial="initial"
-          animate="in"
-          exit="out"
-          variants={pageVariants}
-          transition={pageTransition}
-          className="w-full h-full min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900"
-        >
-          {children}
-        </motion.div>
-      </AnimatePresence>
-    </div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial="initial"
+        animate="in"
+        exit="out"
+        variants={pageVariants}
+        transition={pageTransition}
+        className="w-full h-full"
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   );
 };

@@ -58,24 +58,23 @@ const toolDetails = {
   'go-to-market': { icon: "🚀", title: "Go-to-Market Strategy" }
 };
 
-// Enhanced sleep function with jitter to avoid thundering herd
-const sleep = (ms: number) => {
-  const jitter = Math.random() * 1000; // Add up to 1 second of random jitter
-  return new Promise(resolve => setTimeout(resolve, ms + jitter));
-};
+// Sleep function for delays
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Function to extract JSON from markdown code blocks
 function extractJsonFromMarkdown(content: string): string {
+  // Remove markdown code block markers if present
   const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (jsonMatch) {
     return jsonMatch[1].trim();
   }
+  // If no code blocks found, return the content as-is
   return content.trim();
 }
 
 async function validateWithGemini(businessIdea: string, tool: string, retryCount = 0): Promise<any> {
-  const maxRetries = 5; // Increased retry count
-  const baseDelay = 2000; // Increased base delay to 2 seconds
+  const maxRetries = 3;
+  const baseDelay = 1000; // 1 second
 
   const prompt = `Business Idea: "${businessIdea}"
 
@@ -90,8 +89,6 @@ Please respond with a JSON object in this exact format:
 }`;
 
   try {
-    console.log(`Attempting validation for ${tool} (attempt ${retryCount + 1}/${maxRetries + 1})`);
-    
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
@@ -114,10 +111,10 @@ Please respond with a JSON object in this exact format:
       const errorText = await response.text();
       console.error(`Gemini API error response: ${response.status} ${response.statusText} - ${errorText}`);
       
-      // Handle rate limiting and service unavailable with exponential backoff
-      if ((response.status === 429 || response.status === 503) && retryCount < maxRetries) {
+      // Handle rate limiting specifically
+      if (response.status === 429 && retryCount < maxRetries) {
         const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-        console.log(`API overloaded/rate limited, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
+        console.log(`Rate limited, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
         await sleep(delay);
         return validateWithGemini(businessIdea, tool, retryCount + 1);
       }
@@ -126,26 +123,16 @@ Please respond with a JSON object in this exact format:
     }
 
     const data = await response.json();
-    
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      throw new Error('Invalid response structure from Gemini API');
-    }
-    
     const content = data.candidates[0].content.parts[0].text;
     
     console.log(`Raw Gemini response for ${tool}:`, content);
     
     try {
+      // Extract JSON from potential markdown wrapping
       const cleanedContent = extractJsonFromMarkdown(content);
       console.log(`Cleaned content for ${tool}:`, cleanedContent);
       
       const result = JSON.parse(cleanedContent);
-      
-      // Validate the result structure
-      if (!result.score || !result.status || !result.summary) {
-        throw new Error('Incomplete response from AI');
-      }
-      
       return {
         id: tool,
         ...toolDetails[tool as keyof typeof toolDetails],
@@ -154,39 +141,24 @@ Please respond with a JSON object in this exact format:
         summary: result.summary,
         details: result.details
       };
-    } catch (parseError) {
-      console.error('Error parsing Gemini response:', parseError);
+    } catch (error) {
+      console.error('Error parsing Gemini response:', error);
       console.error('Raw content:', content);
-      
-      if (retryCount < maxRetries) {
-        console.log(`Parse error, retrying ${tool} (attempt ${retryCount + 1}/${maxRetries + 1})`);
-        await sleep(baseDelay);
-        return validateWithGemini(businessIdea, tool, retryCount + 1);
-      }
-      
-      throw new Error('Failed to parse AI response after multiple attempts');
+      throw new Error('Failed to parse AI response');
     }
   } catch (error: any) {
-    console.error(`Error in validateWithGemini for ${tool}:`, error);
-    
-    // Retry on network errors or API issues
-    if (retryCount < maxRetries && (
-      error.message.includes('429') || 
-      error.message.includes('503') || 
-      error.message.includes('fetch') ||
-      error.message.includes('network')
-    )) {
+    if (retryCount < maxRetries && error.message.includes('429')) {
       const delay = baseDelay * Math.pow(2, retryCount);
-      console.log(`Network/API error, retrying ${tool} in ${delay}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
+      console.log(`Error with retry logic, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
       await sleep(delay);
       return validateWithGemini(businessIdea, tool, retryCount + 1);
     }
-    
     throw error;
   }
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -204,69 +176,47 @@ serve(async (req) => {
     console.log('Validating business idea with tools:', selectedTools);
     console.log('Business idea:', businessIdea);
 
+    // Run validations sequentially to avoid rate limiting
     const results = [];
-    const errors = [];
-    
-    // Process tools sequentially with better error handling
-    for (let i = 0; i < selectedTools.length; i++) {
-      const tool = selectedTools[i];
-      console.log(`Processing tool: ${tool} (${i + 1}/${selectedTools.length})`);
-      
+    for (const tool of selectedTools) {
+      console.log(`Processing tool: ${tool}`);
       try {
         const result = await validateWithGemini(businessIdea, tool);
         results.push(result);
-        console.log(`Successfully completed tool: ${tool} with score: ${result.score}`);
+        console.log(`Completed tool: ${tool} with score: ${result.score}`);
         
-        // Add delay between successful requests to be respectful to API
-        if (i < selectedTools.length - 1) {
-          await sleep(1000); // 1 second delay between requests
+        // Add a small delay between requests to be respectful to the API
+        if (selectedTools.indexOf(tool) < selectedTools.length - 1) {
+          await sleep(500); // 500ms delay between requests
         }
       } catch (error: any) {
-        console.error(`Failed to process tool ${tool} after all retries:`, error.message);
-        errors.push({
-          tool,
-          error: error.message
-        });
-        
-        // Continue with other tools even if one fails
-        continue;
+        console.error(`Error processing tool ${tool}:`, error);
+        // Return partial results if some tools succeeded
+        if (results.length > 0) {
+          console.log('Returning partial results due to error');
+          break;
+        } else {
+          throw error; // Re-throw if no tools succeeded
+        }
       }
     }
     
-    // Return results even if some tools failed, but include error information
     if (results.length === 0) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'All validation tools failed',
-          details: 'The AI service appears to be overloaded. Please try again in a few minutes.',
-          failedTools: errors
-        }),
-        {
-          status: 503,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      throw new Error('No validation results could be generated');
     }
     
+    // Calculate average score from successful results
     const averageScore = results.reduce((sum, result) => sum + result.score, 0) / results.length;
 
     console.log(`Validation completed with ${results.length}/${selectedTools.length} tools, average score:`, averageScore);
-    
-    const response = {
-      results,
-      averageScore: Number(averageScore.toFixed(1)),
-      completedTools: results.length,
-      totalTools: selectedTools.length
-    };
-    
-    // Include partial results warning if not all tools completed
-    if (results.length < selectedTools.length) {
-      response.warning = `Only ${results.length} out of ${selectedTools.length} validation tools completed successfully. The AI service may be experiencing high load.`;
-      response.failedTools = errors;
-    }
 
     return new Response(
-      JSON.stringify(response),
+      JSON.stringify({ 
+        results,
+        averageScore: Number(averageScore.toFixed(1)),
+        completedTools: results.length,
+        totalTools: selectedTools.length
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
@@ -276,7 +226,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message || 'An unexpected error occurred',
-        details: 'The validation service is currently experiencing issues. Please try again in a few minutes.'
+        details: 'Please try again. If the problem persists, you may have hit API rate limits.'
       }),
       {
         status: 500,

@@ -13,7 +13,7 @@ const getScoreColor = (score: number) => {
 
 export const ResultsHeader = ({ averageScore }: ResultsHeaderProps) => {
   return (
-    <div className="text-center mb-12 animate-fade-in" data-export="results-header">
+    <div className="text-center mb-12 animate-fade-in">
       <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4">
         Your Startup Validation Report
       </h1>
