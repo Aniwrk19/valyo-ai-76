@@ -25,26 +25,39 @@ const Results = () => {
   useEffect(() => {
     // Load results from localStorage
     const results = localStorage.getItem("validationResults");
-    const avgScore = localStorage.getItem("averageScore");
     
-    if (results && avgScore) {
+    if (results) {
       const parsedResults = JSON.parse(results);
+      console.log('Loaded validation results:', parsedResults);
       setValidationResults(parsedResults);
       
       // Calculate proper average score ensuring it's under 10
       const validScores = parsedResults
         .map((result: ValidationResult) => result.score)
-        .filter((score: number) => typeof score === 'number' && score > 0);
+        .filter((score: number) => typeof score === 'number' && !isNaN(score) && score > 0);
+        
+      console.log('Valid scores for average calculation:', validScores);
         
       if (validScores.length > 0) {
-        const calculatedAverage = validScores.reduce((sum: number, score: number) => sum + score, 0) / validScores.length;
-        // Ensure the average is never above 10
+        const sum = validScores.reduce((total: number, score: number) => total + score, 0);
+        const calculatedAverage = sum / validScores.length;
+        
+        // Ensure the average is never above 10 and round to 1 decimal place
         const finalAverage = Math.min(calculatedAverage, 10);
-        setAverageScore(Math.round(finalAverage * 10) / 10); // Round to 1 decimal place
+        const roundedAverage = Math.round(finalAverage * 10) / 10;
+        
+        console.log('Calculated average score:', roundedAverage);
+        setAverageScore(roundedAverage);
+        
+        // Store the calculated average in localStorage for consistency
+        localStorage.setItem("averageScore", roundedAverage.toString());
       } else {
+        console.log('No valid scores found, setting average to 0');
         setAverageScore(0);
+        localStorage.setItem("averageScore", "0");
       }
     } else {
+      console.log('No validation results found, redirecting to home');
       // If no results, redirect to home
       navigate("/");
     }
