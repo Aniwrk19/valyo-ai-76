@@ -28,8 +28,22 @@ const Results = () => {
     const avgScore = localStorage.getItem("averageScore");
     
     if (results && avgScore) {
-      setValidationResults(JSON.parse(results));
-      setAverageScore(parseFloat(avgScore));
+      const parsedResults = JSON.parse(results);
+      setValidationResults(parsedResults);
+      
+      // Calculate proper average score ensuring it's under 10
+      const validScores = parsedResults
+        .map((result: ValidationResult) => result.score)
+        .filter((score: number) => typeof score === 'number' && score > 0);
+        
+      if (validScores.length > 0) {
+        const calculatedAverage = validScores.reduce((sum: number, score: number) => sum + score, 0) / validScores.length;
+        // Ensure the average is never above 10
+        const finalAverage = Math.min(calculatedAverage, 10);
+        setAverageScore(Math.round(finalAverage * 10) / 10); // Round to 1 decimal place
+      } else {
+        setAverageScore(0);
+      }
     } else {
       // If no results, redirect to home
       navigate("/");
@@ -54,7 +68,7 @@ const Results = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-4">
       <div className="w-full max-w-4xl mx-auto py-8">
-        <ResultsHeader averageScore={averageScore} />
+        <ResultsHeader averageScore={averageScore} validationResults={validationResults} />
 
         {/* Validation Results */}
         <div className="space-y-6 mb-12">
