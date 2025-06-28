@@ -35,6 +35,30 @@ const getStatusIcon = (status: string) => {
   }
 };
 
+const renderDetails = (details: any) => {
+  if (typeof details === 'string') {
+    return <div className="whitespace-pre-line leading-relaxed">{details}</div>;
+  }
+  
+  if (Array.isArray(details)) {
+    return (
+      <div className="space-y-2">
+        {details.map((item, index) => (
+          <div key={index} className="text-sm">
+            {typeof item === 'string' ? item : JSON.stringify(item)}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  
+  if (typeof details === 'object' && details !== null) {
+    return <div>Analysis details are available in a structured format but cannot be displayed properly.</div>;
+  }
+  
+  return <div>No detailed analysis available.</div>;
+};
+
 export const ValidationResultCard = ({ result, isOpen, onToggle }: ValidationResultCardProps) => {
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
@@ -77,8 +101,8 @@ export const ValidationResultCard = ({ result, isOpen, onToggle }: ValidationRes
         <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="prose prose-invert max-w-none">
-              <div className="text-slate-300 whitespace-pre-line leading-relaxed">
-                {result.details}
+              <div className="text-slate-300">
+                {renderDetails(result.details)}
               </div>
             </div>
           </CardContent>
