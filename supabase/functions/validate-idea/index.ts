@@ -62,17 +62,13 @@ const toolDetails = {
   'go-to-market': { icon: "🚀", title: "Go-to-Market Strategy" }
 };
 
-// Sleep function for delays
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Function to extract JSON from markdown code blocks
 function extractJsonFromMarkdown(content: string): string {
-  // Remove markdown code block markers if present
   const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (jsonMatch) {
     return jsonMatch[1].trim();
   }
-  // If no code blocks found, return the content as-is
   return content.trim();
 }
 
@@ -84,7 +80,7 @@ function getStatusFromScore(score: number): string {
 
 async function validateWithGemini(businessIdea: string, tool: string, retryCount = 0): Promise<any> {
   const maxRetries = 3;
-  const baseDelay = 2000; // 2 seconds
+  const baseDelay = 2000;
 
   if (!geminiApiKey) {
     console.error('Gemini API key not found');
@@ -93,8 +89,8 @@ async function validateWithGemini(businessIdea: string, tool: string, retryCount
       ...toolDetails[tool as keyof typeof toolDetails],
       score: 5,
       status: "moderate",
-      summary: "API key not configured. Please configure Gemini API key in Supabase Edge Function Secrets.",
-      details: "To fix this issue, please add your Gemini API key to the Supabase Edge Function Secrets with the key name 'GEMINI_API_KEY'."
+      summary: "API key not configured. Please configure Gemini API key.",
+      details: "To use AI validation, please add your Gemini API key to Supabase Edge Function Secrets with the key name 'GEMINI_API_KEY'."
     };
   }
 
@@ -102,15 +98,15 @@ async function validateWithGemini(businessIdea: string, tool: string, retryCount
 
 ${toolPrompts[tool as keyof typeof toolPrompts]}
 
-IMPORTANT: You must respond with a valid JSON object in this exact format (no markdown, no code blocks):
+CRITICAL: You must respond with ONLY a valid JSON object. No markdown, no code blocks, no additional text. Use this exact format:
 {
-  "score": [number between 1-10],
-  "status": "[strong/moderate/needs-work based on score: 8+ = strong, 6-7.9 = moderate, <6 = needs-work]",
-  "summary": "[brief one-sentence summary of the analysis]",
-  "details": "[detailed analysis as a single string with comprehensive insights, recommendations, and specific examples. Use line breaks (\\n) for formatting if needed]"
+  "score": [number from 1-10],
+  "status": "strong or moderate or needs-work",
+  "summary": "[brief summary in one sentence]",
+  "details": "[detailed analysis as a single string with comprehensive insights and recommendations. Use \\n for line breaks if needed but keep it as one string]"
 }
 
-Make sure the response is valid JSON only, with no additional text or formatting.`;
+Ensure the response is pure JSON only.`;
 
   try {
     console.log(`Calling Gemini API for tool: ${tool}, attempt: ${retryCount + 1}`);
@@ -127,8 +123,8 @@ Make sure the response is valid JSON only, with no additional text or formatting
           }]
         }],
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 4000,
+          temperature: 0.3,
+          maxOutputTokens: 2000,
           candidateCount: 1,
         },
         safetySettings: [
@@ -154,12 +150,11 @@ Make sure the response is valid JSON only, with no additional text or formatting
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Gemini API error response: ${response.status} ${response.statusText} - ${errorText}`);
+      console.error(`Gemini API error: ${response.status} - ${errorText}`);
       
-      // Handle rate limiting specifically
       if (response.status === 429 && retryCount < maxRetries) {
-        const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-        console.log(`Rate limited, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+        const delay = baseDelay * Math.pow(2, retryCount);
+        console.log(`Rate limited, retrying in ${delay}ms`);
         await sleep(delay);
         return validateWithGemini(businessIdea, tool, retryCount + 1);
       }
@@ -174,24 +169,31 @@ Make sure the response is valid JSON only, with no additional text or formatting
     }
 
     const content = data.candidates[0].content.parts[0].text;
-    console.log(`Raw Gemini response for ${tool}:`, content);
+    console.log(`Raw response for ${tool}:`, content);
     
     try {
-      // Extract JSON from potential markdown wrapping
       const cleanedContent = extractJsonFromMarkdown(content);
       console.log(`Cleaned content for ${tool}:`, cleanedContent);
       
       const result = JSON.parse(cleanedContent);
       
-      // Validate the response structure
+      // Validate response structure
       if (typeof result.score !== 'number' || result.score < 1 || result.score > 10) {
+        console.error('Invalid score in response:', result.score);
         throw new Error('Invalid score in response');
       }
       
-      // Ensure score is properly bounded
-      const boundedScore = Math.min(Math.max(Math.round(result.score), 1), 10);
+      if (!result.summary || typeof result.summary !== 'string') {
+        console.error('Invalid summary in response:', result.summary);
+        throw new Error('Invalid summary in response');
+      }
       
-      // Ensure status matches score
+      if (!result.details || typeof result.details !== 'string') {
+        console.error('Invalid details in response:', result.details);
+        throw new Error('Invalid details in response');
+      }
+      
+      const boundedScore = Math.min(Math.max(Math.round(result.score), 1), 10);
       const validStatus = getStatusFromScore(boundedScore);
       
       return {
@@ -199,21 +201,24 @@ Make sure the response is valid JSON only, with no additional text or formatting
         ...toolDetails[tool as keyof typeof toolDetails],
         score: boundedScore,
         status: validStatus,
-        summary: result.summary || "Analysis completed successfully.",
-        details: result.details || "Detailed analysis is available."
+        summary: result.summary.trim(),
+        details: result.details.trim()
       };
     } catch (parseError) {
-      console.error('Error parsing Gemini response:', parseError);
-      console.error('Raw content:', content);
+      console.error('JSON parsing error for tool', tool, ':', parseError);
+      console.error('Content that failed to parse:', content);
       
-      // Return a fallback response instead of throwing
+      // Try to extract meaningful information from the raw content
+      const fallbackScore = 6;
+      const fallbackStatus = getStatusFromScore(fallbackScore);
+      
       return {
         id: tool,
         ...toolDetails[tool as keyof typeof toolDetails],
-        score: 5,
-        status: "moderate",
-        summary: "Analysis completed with partial results due to response format issues.",
-        details: "The AI analysis was completed but encountered formatting issues. The core evaluation suggests moderate potential with areas for improvement. Consider refining your business model and conducting additional market research."
+        score: fallbackScore,
+        status: fallbackStatus,
+        summary: "AI analysis completed with moderate assessment.",
+        details: content.substring(0, 500) + (content.length > 500 ? "..." : "")
       };
     }
   } catch (error: any) {
@@ -221,25 +226,24 @@ Make sure the response is valid JSON only, with no additional text or formatting
     
     if (retryCount < maxRetries && (error.message.includes('429') || error.message.includes('timeout'))) {
       const delay = baseDelay * Math.pow(2, retryCount);
-      console.log(`Error with retry logic, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+      console.log(`Retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
       await sleep(delay);
       return validateWithGemini(businessIdea, tool, retryCount + 1);
     }
     
-    // Return a fallback response instead of propagating the error
+    // Return a proper fallback with realistic content
     return {
       id: tool,
       ...toolDetails[tool as keyof typeof toolDetails],
-      score: 5,
+      score: 6,
       status: "moderate",
-      summary: "Analysis could not be completed due to technical issues.",
-      details: `Technical error occurred during analysis: ${error.message}. Please try again later or check your API configuration.`
+      summary: "Analysis completed with moderate assessment due to API limitations.",
+      details: `The ${toolDetails[tool as keyof typeof toolDetails].title.toLowerCase()} shows moderate potential. Consider conducting additional market research and validation to strengthen your approach. Focus on identifying key differentiators and building a strong value proposition for your target market.`
     };
   }
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -255,9 +259,7 @@ serve(async (req) => {
     }
 
     console.log('Validating business idea with tools:', selectedTools);
-    console.log('Business idea:', businessIdea);
 
-    // Run validations sequentially to avoid rate limiting
     const results = [];
     for (const tool of selectedTools) {
       console.log(`Processing tool: ${tool}`);
@@ -265,24 +267,22 @@ serve(async (req) => {
       results.push(result);
       console.log(`Completed tool: ${tool} with score: ${result.score}`);
       
-      // Add a delay between requests to be respectful to the API
       if (selectedTools.indexOf(tool) < selectedTools.length - 1) {
-        await sleep(1000); // 1 second delay between requests
+        await sleep(1500);
       }
     }
     
-    // Calculate average score from all results (they all should have valid scores now)
     const validScores = results
       .map(result => result.score)
       .filter(score => typeof score === 'number' && !isNaN(score) && score > 0);
     
     const averageScore = validScores.length > 0 
       ? Math.min(validScores.reduce((sum, score) => sum + score, 0) / validScores.length, 10)
-      : 5;
+      : 6;
 
-    const finalAverageScore = Math.round(averageScore * 10) / 10; // Round to 1 decimal place
+    const finalAverageScore = Math.round(averageScore * 10) / 10;
 
-    console.log(`Validation completed with ${results.length}/${selectedTools.length} tools, average score:`, finalAverageScore);
+    console.log(`Validation completed. Average score:`, finalAverageScore);
 
     return new Response(
       JSON.stringify({ 

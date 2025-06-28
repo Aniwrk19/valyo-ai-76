@@ -90,7 +90,7 @@ const ValidateIdea = () => {
         </div>
       </div>
 
-      {/* Authentication Status - Top Right */}
+      {/* Authentication Status - Top Right - Fixed mobile alignment */}
       <div className="absolute top-4 right-4 z-10">
         {user ? (
           <DropdownMenu>
@@ -103,16 +103,20 @@ const ValidateIdea = () => {
                 <ChevronDown className="w-4 h-4 text-blue-400" />
               </div>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-slate-800/95 backdrop-blur-sm border-slate-600 z-50">
+            <DropdownMenuContent 
+              className="bg-slate-800/95 backdrop-blur-sm border-slate-600 z-50 mr-4 sm:mr-0" 
+              align="end"
+              sideOffset={8}
+            >
               <DropdownMenuItem 
                 onClick={handleSavedReports}
-                className="text-blue-400 text-sm hover:bg-transparent focus:bg-transparent cursor-pointer"
+                className="text-blue-400 text-sm hover:bg-slate-700/50 focus:bg-slate-700/50 cursor-pointer"
               >
                 Saved Reports
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={handleSignOut}
-                className="text-blue-400 text-sm hover:bg-transparent focus:bg-transparent cursor-pointer"
+                className="text-blue-400 text-sm hover:bg-slate-700/50 focus:bg-slate-700/50 cursor-pointer"
               >
                 Sign Out
               </DropdownMenuItem>
@@ -130,6 +134,7 @@ const ValidateIdea = () => {
         )}
       </div>
 
+      {/* Main Content */}
       <div className="w-full max-w-4xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-12 animate-fade-in relative pt-16">

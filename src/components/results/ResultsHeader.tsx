@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import {
@@ -49,7 +48,6 @@ export const ResultsHeader = ({ averageScore, validationResults }: ResultsHeader
   console.log('ResultsHeader - Average Score:', averageScore);
   console.log('ResultsHeader - Validation Results:', validationResults);
 
-  // Ensure we have a valid average score
   const displayScore = typeof averageScore === 'number' && !isNaN(averageScore) ? averageScore : 0;
 
   return (
@@ -82,7 +80,7 @@ export const ResultsHeader = ({ averageScore, validationResults }: ResultsHeader
             </button>
           </CollapsibleTrigger>
           
-          <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
+          <CollapsibleContent>
             <div className="mt-6 space-y-4 bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
               <div className="text-sm text-slate-300 mb-4 font-medium">
                 Detailed breakdown of your validation results:
@@ -117,11 +115,7 @@ export const ResultsHeader = ({ averageScore, validationResults }: ResultsHeader
                         <div className="border-t border-slate-700/50 pt-3">
                           <div className="text-slate-300 text-xs font-medium mb-2">Detailed Analysis:</div>
                           <div className="text-slate-300 text-xs leading-relaxed">
-                            {typeof result.details === 'string' ? (
-                              <div className="whitespace-pre-wrap">{result.details}</div>
-                            ) : (
-                              <div>Analysis details are available but in an unsupported format.</div>
-                            )}
+                            <div className="whitespace-pre-line">{result.details}</div>
                           </div>
                         </div>
                       )}

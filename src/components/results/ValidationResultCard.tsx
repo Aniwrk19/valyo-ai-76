@@ -37,14 +37,14 @@ const getStatusIcon = (status: string) => {
 
 const renderDetails = (details: any) => {
   if (typeof details === 'string') {
-    return <div className="whitespace-pre-line leading-relaxed">{details}</div>;
+    return <div className="whitespace-pre-line leading-relaxed text-slate-300">{details}</div>;
   }
   
   if (Array.isArray(details)) {
     return (
       <div className="space-y-2">
         {details.map((item, index) => (
-          <div key={index} className="text-sm">
+          <div key={index} className="text-sm text-slate-300">
             {typeof item === 'string' ? item : JSON.stringify(item)}
           </div>
         ))}
@@ -53,10 +53,10 @@ const renderDetails = (details: any) => {
   }
   
   if (typeof details === 'object' && details !== null) {
-    return <div>Analysis details are available in a structured format but cannot be displayed properly.</div>;
+    return <div className="text-slate-300">Analysis details are available in structured format but cannot be displayed properly.</div>;
   }
   
-  return <div>No detailed analysis available.</div>;
+  return <div className="text-slate-300">No detailed analysis available.</div>;
 };
 
 export const ValidationResultCard = ({ result, isOpen, onToggle }: ValidationResultCardProps) => {
@@ -101,7 +101,8 @@ export const ValidationResultCard = ({ result, isOpen, onToggle }: ValidationRes
         <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="prose prose-invert max-w-none">
-              <div className="text-slate-300">
+              <div className="p-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
+                <h4 className="text-slate-200 font-medium mb-3 text-sm">Detailed Analysis:</h4>
                 {renderDetails(result.details)}
               </div>
             </div>
