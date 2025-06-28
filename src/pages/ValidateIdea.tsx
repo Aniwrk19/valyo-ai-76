@@ -1,10 +1,15 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Lightbulb, Zap, User } from "lucide-react";
+import { Lightbulb, Zap, User, ChevronDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Tool {
   id: string;
@@ -17,7 +22,7 @@ const ValidateIdea = () => {
   const [idea, setIdea] = useState("");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
 
   const tools: Tool[] = [{
     id: "business-idea",
@@ -58,6 +63,15 @@ const ValidateIdea = () => {
     navigate("/auth");
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  const handleSavedReports = () => {
+    navigate("/saved-reports");
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center">
@@ -79,12 +93,31 @@ const ValidateIdea = () => {
       {/* Authentication Status - Top Right */}
       <div className="absolute top-4 right-4 z-10">
         {user ? (
-          <div className="flex items-center gap-2 text-slate-300">
-            <User className="w-6 h-6 p-1 bg-slate-800 border border-slate-600 rounded-full text-blue-400" />
-            <span className="text-blue-400 font-medium text-sm hidden sm:inline">
-              {user.user_metadata?.username || user.email}
-            </span>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                <User className="w-6 h-6 p-1 bg-slate-800 border border-slate-600 rounded-full text-blue-400" />
+                <span className="text-blue-400 font-medium text-sm hidden sm:inline">
+                  {user.user_metadata?.username || user.email}
+                </span>
+                <ChevronDown className="w-4 h-4 text-blue-400" />
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-slate-800/95 backdrop-blur-sm border-slate-600 z-50">
+              <DropdownMenuItem 
+                onClick={handleSavedReports}
+                className="text-blue-400 text-sm hover:bg-transparent focus:bg-transparent cursor-pointer"
+              >
+                Saved Reports
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={handleSignOut}
+                className="text-blue-400 text-sm hover:bg-transparent focus:bg-transparent cursor-pointer"
+              >
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
           <Button
             onClick={handleSignIn}
